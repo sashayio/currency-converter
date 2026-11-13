@@ -313,7 +313,6 @@ function getFlagHTML(code, size = 28) {
   const bg = cur.color || '#555';
   return `<span style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:${bg};color:#fff;font-size:${size*0.42}px;font-weight:700;line-height:1">${cur.symbol || code.toUpperCase().slice(0,1)}</span>`;
 }
-}
 
 function formatNumber(num, currency) {
   if (num === null || num === undefined || isNaN(num)) return '—';
