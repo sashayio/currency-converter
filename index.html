@@ -15,31 +15,41 @@
   <!-- ===== SETUP SCREEN (first run) ===== -->
   <div id="setup-screen" class="screen">
     <div class="setup-container">
-      <div class="setup-logo">💱</div>
-      <h1 class="setup-title">World Prices</h1>
-      <p class="setup-subtitle">Конвертер валют и криптовалют</p>
+      <div class="setup-header">
+        <div class="setup-logo">💱</div>
+        <h1 class="setup-title">World Prices</h1>
+        <p class="setup-subtitle">Конвертер валют и криптовалют</p>
+      </div>
 
       <!-- Step 1: source currency -->
       <div id="setup-step-1" class="setup-step">
-        <h2 class="step-title">Из какой валюты конвертировать?</h2>
-        <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="setup-search-source" placeholder="Поиск валюты..." autocomplete="off">
+        <div class="setup-step-header">
+          <h2 class="step-title">Из какой валюты конвертировать?</h2>
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="setup-search-source" placeholder="Поиск валюты..." autocomplete="off">
+          </div>
         </div>
         <div id="setup-source-list" class="currency-grid"></div>
-        <button id="setup-next-btn" class="btn-primary" disabled>Далее →</button>
+        <div class="setup-step-footer">
+          <button id="setup-next-btn" class="btn-primary" disabled>Далее →</button>
+        </div>
       </div>
 
       <!-- Step 2: target currencies -->
       <div id="setup-step-2" class="setup-step hidden">
-        <h2 class="step-title">В какие валюты конвертировать?</h2>
-        <p class="step-hint">Выберите одну или несколько</p>
-        <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="setup-search-target" placeholder="Поиск валюты..." autocomplete="off">
+        <div class="setup-step-header">
+          <h2 class="step-title">В какие валюты конвертировать?</h2>
+          <p class="step-hint">Выберите одну или несколько</p>
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="setup-search-target" placeholder="Поиск валюты..." autocomplete="off">
+          </div>
         </div>
         <div id="setup-target-list" class="currency-grid"></div>
-        <button id="setup-start-btn" class="btn-primary" disabled>Начать 🚀</button>
+        <div class="setup-step-footer">
+          <button id="setup-start-btn" class="btn-primary" disabled>Начать 🚀</button>
+        </div>
       </div>
     </div>
   </div>
@@ -54,6 +64,9 @@
       <div class="header-right">
         <button id="refresh-btn" class="icon-btn" title="Обновить курсы">
           <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+        <button id="theme-btn" class="icon-btn" title="Сменить тему">
+          <svg id="theme-icon" viewBox="0 0 24 24" width="22" height="22"></svg>
         </button>
         <button id="export-btn" class="icon-btn" title="Экспорт в PNG">
           <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -73,6 +86,18 @@
           <svg class="chevron" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
         </button>
         <input type="text" id="amount-input" inputmode="decimal" value="1 000" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Reorder Edit Mode Toolbar -->
+    <div id="reorder-toolbar" class="reorder-toolbar hidden">
+      <div class="reorder-info">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        <span>Порядок валют (перетащите)</span>
+      </div>
+      <div class="reorder-actions">
+        <button id="reorder-cancel-btn" class="reorder-btn btn-cancel">Отменить</button>
+        <button id="reorder-save-btn" class="reorder-btn btn-save">Сохранить</button>
       </div>
     </div>
 

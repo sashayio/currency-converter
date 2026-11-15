@@ -14,8 +14,9 @@ const API_JSDELIVR      = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-ap
 // Crypto spot prices API (Binance public tickers, real-time live prices, no key)
 const API_BINANCE       = 'https://api.binance.com/api/v3/ticker/price';
 
-const FLAG_URL          = 'https://flagcdn.com/w80';  // {code}.png
+const FLAG_URL          = 'assets/flags';
 const STORAGE_KEY       = 'worldprices_v2';
+const THEME_STORAGE_KEY = 'worldprices_theme';
 const CACHE_MAX_AGE     = 15 * 60 * 1000; // 15 minutes fresh cache
 
 // ============ CURRENCY DATABASE ============
@@ -171,50 +172,76 @@ function getEUFlagDataURL(size = 160) {
   }
 }
 
+// ============ THEME MANAGEMENT ============
+function getCurrentTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'dark' || saved === 'light') return saved;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  updateThemeIcon(theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || getCurrentTheme();
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  showToast(next === 'dark' ? '🌙 Тёмная тема' : '☀️ Светлая тема');
+}
+
+function updateThemeIcon(theme) {
+  const iconEl = $('#theme-icon');
+  const btnEl = $('#theme-btn');
+  if (!iconEl) return;
+  if (theme === 'dark') {
+    // Sun icon to switch to light
+    iconEl.innerHTML = `<path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36l-1.06 1.06a.996.996 0 000 1.41c.39.39 1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.02-.39-1.41 0z"/>`;
+    if (btnEl) btnEl.title = 'Переключить на светлую тему';
+  } else {
+    // Moon icon to switch to dark
+    iconEl.innerHTML = `<path fill="currentColor" d="M12.3 2a10 10 0 00-1.9 19.8 10 10 0 0010.5-12.8A8 8 0 0112.3 2z"/>`;
+    if (btnEl) btnEl.title = 'Переключить на тёмную тему';
+  }
+}
+
 async function getFlagDataUrl(code) {
   const cur = CURRENCIES[code];
   if (!cur) return null;
-
-  if (code === 'eur') {
-    const dataUrl = getEUFlagDataURL();
-    flagDataCache.set('eu', dataUrl);
-    return dataUrl;
-  }
+  if (cur.cat === 'crypto') return null;
 
   if (cur.customFlag) return cur.customFlag;
   if (!cur.cc) return null;
 
   const cc = cur.cc;
-
   if (flagDataCache.has(cc)) {
     return flagDataCache.get(cc);
   }
 
   try {
-    const response = await fetch(`${FLAG_URL}/${cc}.png`, {
-      mode: 'cors',
-      cache: 'force-cache'
+    const img = new Image();
+    const loaded = new Promise((resolve, reject) => {
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load ${FLAG_URL}/${cc}.svg`));
     });
+    img.src = `${FLAG_URL}/${cc}.svg`;
+    await loaded;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const blob = await response.blob();
-
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
+    const canvas = document.createElement('canvas');
+    canvas.width = 80;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 80, 80);
+    const dataUrl = canvas.toDataURL('image/png');
     flagDataCache.set(cc, dataUrl);
     return dataUrl;
-
   } catch (error) {
-    console.warn(`Не удалось загрузить флаг ${cc}:`, error);
-    return null;
+    console.warn(`Не удалось подготовить флаг ${cc}:`, error);
+    return `${FLAG_URL}/${cc}.svg`;
   }
 }
 
@@ -227,12 +254,10 @@ function getExportFlagHTML(code, size = 28) {
   }
 
   let src = null;
-  if (code === 'eur') {
-    src = flagDataCache.get('eu') || getEUFlagDataURL();
-  } else if (cur.customFlag) {
+  if (cur.customFlag) {
     src = cur.customFlag;
   } else if (cur.cc) {
-    src = flagDataCache.get(cur.cc);
+    src = flagDataCache.get(cur.cc) || `${FLAG_URL}/${cur.cc}.svg`;
   }
 
   if (!src) {
@@ -269,45 +294,12 @@ function getFlagHTML(code, size = 28) {
   const cur = CURRENCIES[code];
   if (!cur) return `<span style="font-size:${size*0.5}px">${code.toUpperCase().slice(0,2)}</span>`;
 
-  if (code === 'eur') {
-    const euSrc = flagDataCache.get('eu') || getEUFlagDataURL();
-    if (euSrc) {
-      return `<img src="${euSrc}" alt="EUR" width="${size}" height="${size}" style="display:block;width:${size}px;height:${size}px;object-fit:cover;border-radius:50%">`;
-    }
-    const stars = Array.from({ length: 12 }, (_, i) => {
-      const angle = i * 30;
-      const radius = size * 0.28;
-      const x = size / 2 + Math.sin(angle * Math.PI / 180) * radius;
-      const y = size / 2 - Math.cos(angle * Math.PI / 180) * radius;
-      return `<span style="
-        position: absolute;
-        left: ${x}px;
-        top: ${y}px;
-        transform: translate(-50%, -50%);
-        color: #ffcc00;
-        font-size: ${size * 0.19}px;
-        line-height: 1;
-      ">★</span>`;
-    }).join('');
-
-    return `
-      <div style="
-        position: relative;
-        width: ${size}px;
-        height: ${size}px;
-        min-width: ${size}px;
-        border-radius: 50%;
-        overflow: hidden;
-        background: #003399;
-      ">${stars}</div>`;
-  }
-
   if (cur.customFlag) {
     return `<img src="${cur.customFlag}" alt="${code}" width="${size}" height="${size}" style="display:block;width:${size}px;height:${size}px;object-fit:cover;border-radius:50%">`;
   }
   if (cur.cc) {
-    const src = flagDataCache.get(cur.cc) || `${FLAG_URL}/${cur.cc}.png`;
-    return `<img src="${src}" crossorigin="anonymous" alt="${code}" width="${size}" height="${size}" loading="lazy" style="display:block;width:${size}px;height:${size}px;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.parentElement.textContent='${code.toUpperCase().slice(0,2)}'">`;
+    const src = `${FLAG_URL}/${cur.cc}.svg`;
+    return `<img src="${src}" alt="${code}" width="${size}" height="${size}" loading="lazy" style="display:block;width:${size}px;height:${size}px;object-fit:cover;border-radius:50%" onerror="this.style.display='none';this.parentElement.textContent='${code.toUpperCase().slice(0,2)}'">`;
   }
   // Crypto — colored circle with symbol
   const bg = cur.color || '#555';
@@ -757,9 +749,74 @@ function updateLastUpdated() {
   }
 }
 
+// ============ REORDER / DRAG & DROP ============
+let isReordering = false;
+let reorderOriginalTargets = [];
+let touchDragCard = null;
+let touchLongPressTimer = null;
+let touchMoved = false;
+
+function enterReorderMode() {
+  if (isReordering) return;
+  isReordering = true;
+  reorderOriginalTargets = [...state.targets];
+  $('#reorder-toolbar')?.classList.remove('hidden');
+  $('#conversion-cards')?.classList.add('is-editing');
+  showToast('Режим изменения порядка: перетащите карточки');
+}
+
+function saveReorder() {
+  if (!isReordering) return;
+  const container = $('#conversion-cards');
+  const cards = [...container.querySelectorAll('.conv-card')];
+  const newOrder = cards.map(c => c.dataset.code).filter(Boolean);
+  if (newOrder.length > 0) {
+    state.targets = newOrder;
+    saveState();
+  }
+  exitReorderMode();
+  renderConversionCards(false);
+  showToast('✓ Порядок сохранён');
+}
+
+function cancelReorder() {
+  if (!isReordering) return;
+  state.targets = [...reorderOriginalTargets];
+  exitReorderMode();
+  renderConversionCards(false);
+  showToast('Изменения отменены');
+}
+
+function exitReorderMode() {
+  isReordering = false;
+  $('#reorder-toolbar')?.classList.add('hidden');
+  $('#conversion-cards')?.classList.remove('is-editing');
+  cleanupTouchDrag();
+}
+
+function cleanupTouchDrag() {
+  if (touchLongPressTimer) {
+    clearTimeout(touchLongPressTimer);
+    touchLongPressTimer = null;
+  }
+  if (touchDragCard) {
+    touchDragCard.classList.remove('is-dragging');
+    touchDragCard = null;
+  }
+  document.querySelectorAll('.conv-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
 function renderConversionCards(loading = false) {
   const container = $('#conversion-cards');
   container.innerHTML = '';
+
+  if (isReordering) {
+    container.classList.add('is-editing');
+    $('#reorder-toolbar')?.classList.remove('hidden');
+  } else {
+    container.classList.remove('is-editing');
+    $('#reorder-toolbar')?.classList.add('hidden');
+  }
 
   for (const code of state.targets) {
     const cur = CURRENCIES[code] || { name: code.toUpperCase(), symbol: '' };
@@ -769,7 +826,13 @@ function renderConversionCards(loading = false) {
 
     const card = document.createElement('div');
     card.className = 'conv-card';
+    card.dataset.code = code;
+    card.setAttribute('draggable', 'true');
+
     card.innerHTML = `
+      <div class="conv-drag-handle" title="Зажмите для перемещения">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 3h2v2H9V3zm4 0h2v2h-2V3zM9 7h2v2H9V7zm4 0h2v2h-2V7zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2z"/></svg>
+      </div>
       <div class="conv-flag">${getFlagHTML(code, 40)}</div>
       <div class="conv-info">
         <div class="conv-code">${code.toUpperCase()}</div>
@@ -780,20 +843,112 @@ function renderConversionCards(loading = false) {
         ${unitRate ? `<div class="conv-rate">1 ${state.source.toUpperCase()} = ${unitRate}</div>` : ''}
       </div>
       <button class="conv-delete" title="Удалить" data-code="${code}">&times;</button>`;
-    container.appendChild(card);
-  }
 
-  // Delete handlers
-  container.querySelectorAll('.conv-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // --- HTML5 Desktop Drag & Drop ---
+    card.addEventListener('dragstart', (e) => {
+      if (!isReordering) {
+        enterReorderMode();
+      }
+      card.classList.add('is-dragging');
+      e.dataTransfer.setData('text/plain', code);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('is-dragging');
+      document.querySelectorAll('.conv-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const dragging = container.querySelector('.is-dragging');
+      if (dragging && dragging !== card) {
+        const rect = card.getBoundingClientRect();
+        const isAfter = (e.clientY - rect.top) / rect.height > 0.5;
+        container.insertBefore(dragging, isAfter ? card.nextSibling : card);
+      }
+    });
+
+    // --- Mobile Touch & Long Press ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    card.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchMoved = false;
+
+      if (!isReordering) {
+        // Long press detection to enter edit mode on phone
+        touchLongPressTimer = setTimeout(() => {
+          if (!touchMoved) {
+            if (navigator.vibrate) {
+              try { navigator.vibrate(50); } catch (_) {}
+            }
+            enterReorderMode();
+            touchDragCard = card;
+            card.classList.add('is-dragging');
+          }
+        }, 420);
+      } else {
+        // Already in reorder mode: start dragging immediately
+        touchDragCard = card;
+        card.classList.add('is-dragging');
+      }
+    }, { passive: false });
+
+    card.addEventListener('touchmove', (e) => {
+      if (!e.touches.length) return;
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartX);
+      const deltaY = Math.abs(touch.clientY - touchStartY);
+
+      if (deltaX > 8 || deltaY > 8) {
+        touchMoved = true;
+      }
+
+      if (!isReordering) {
+        if (touchMoved && touchLongPressTimer) {
+          clearTimeout(touchLongPressTimer);
+          touchLongPressTimer = null;
+        }
+      } else {
+        if (touchDragCard) {
+          e.preventDefault();
+          const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+          const targetCard = targetEl?.closest('.conv-card');
+          if (targetCard && targetCard !== touchDragCard && container.contains(targetCard)) {
+            const rect = targetCard.getBoundingClientRect();
+            const isAfter = touch.clientY > (rect.top + rect.height / 2);
+            container.insertBefore(touchDragCard, isAfter ? targetCard.nextSibling : targetCard);
+          }
+        }
+      }
+    }, { passive: false });
+
+    card.addEventListener('touchend', () => {
+      cleanupTouchDrag();
+    });
+
+    card.addEventListener('touchcancel', () => {
+      cleanupTouchDrag();
+    });
+
+    // Delete handler
+    card.querySelector('.conv-delete')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const code = btn.dataset.code;
+      if (isReordering) return;
       state.targets = state.targets.filter(t => t !== code);
       saveState();
       renderConversionCards(false);
       showToast(`${code.toUpperCase()} удалён`);
     });
-  });
+
+    container.appendChild(card);
+  }
 }
 
 // ============ SETTINGS MODAL ============
@@ -801,6 +956,7 @@ let settingsSource = null;
 let settingsTargets = new Set();
 
 function openSettings() {
+  if (isReordering) cancelReorder();
   settingsSource = state.source;
   settingsTargets = new Set(state.targets);
   renderSettingsSourceList();
@@ -1144,8 +1300,13 @@ function initEventListeners() {
     }
   });
 
+  $('#theme-btn')?.addEventListener('click', toggleTheme);
   $('#export-btn').addEventListener('click', exportToPNG);
   $('#settings-btn').addEventListener('click', openSettings);
+
+  // Reorder buttons
+  $('#reorder-save-btn')?.addEventListener('click', saveReorder);
+  $('#reorder-cancel-btn')?.addEventListener('click', cancelReorder);
 
   // Settings modal
   $('#settings-close').addEventListener('click', closeSettings);
@@ -1167,17 +1328,21 @@ function initEventListeners() {
     renderSourcePickerList(e.target.value);
   });
 
-  // Keyboard: Escape closes modals
+  // Keyboard: Escape closes modals or exits reorder mode
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!$('#settings-modal').classList.contains('hidden')) closeSettings();
       if (!$('#source-picker-modal').classList.contains('hidden')) closeSourcePicker();
+      if (isReordering) cancelReorder();
     }
   });
 }
 
 // ============ INIT ============
 async function init() {
+  // Apply saved or system theme immediately
+  applyTheme(getCurrentTheme());
+
   const hasData = loadState();
 
   if (hasData && state.source && state.targets.length > 0) {
