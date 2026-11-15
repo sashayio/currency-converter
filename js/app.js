@@ -17,86 +17,237 @@ const API_BINANCE       = 'https://api.binance.com/api/v3/ticker/price';
 const FLAG_URL          = 'assets/flags';
 const STORAGE_KEY       = 'worldprices_v2';
 const THEME_STORAGE_KEY = 'worldprices_theme';
+const LANG_STORAGE_KEY  = 'worldprices_lang';
 const CACHE_MAX_AGE     = 15 * 60 * 1000; // 15 minutes fresh cache
+
+// ============ I18N (INTERNATIONALIZATION) ============
+function getInitialLanguage() {
+  try {
+    const saved = localStorage.getItem(LANG_STORAGE_KEY);
+    if (saved === 'ru' || saved === 'en') return saved;
+  } catch (e) {}
+  // Default is English
+  return 'en';
+}
+
+let currentLang = getInitialLanguage();
+
+const I18N = {
+  ru: {
+    appTitle: 'Currency converter',
+    headerTitle: 'Конвертер валют',
+    appSubtitle: 'Конвертер валют и криптовалют',
+    setupStep1Title: 'Из какой валюты конвертировать?',
+    setupStep2Title: 'В какие валюты конвертировать?',
+    setupStep2Hint: 'Выберите одну или несколько',
+    searchCurrency: 'Поиск валюты...',
+    searchShort: 'Поиск...',
+    nextBtn: 'Далее →',
+    startBtn: 'Начать 🚀',
+    startBtnCount: (n) => `Начать (${n}) 🚀`,
+    refreshRates: 'Обновить курсы',
+    toggleTheme: 'Сменить тему',
+    exportPNG: 'Экспорт в PNG',
+    settings: 'Настройки',
+    language: 'Язык интерфейса',
+    sourceCurrency: 'Исходная валюта',
+    targetCurrencies: 'Целевые валюты',
+    save: 'Сохранить',
+    cancel: 'Отменить',
+    reorderInfo: 'Порядок валют (перетащите)',
+    holdToDrag: 'Зажмите для перемещения',
+    deleteCurrency: 'Удалить',
+    loadingRates: 'Загрузка курсов...',
+    ratesNotLoaded: 'Курсы не загружены',
+    ratesUpdated: (date, time) => `Курсы обновлены: ${date}, ${time}`,
+    ratesAsOf: (date) => `Курсы на ${date}`,
+    unitRate: (src, unit) => `1 ${src} = ${unit}`,
+    buyCoffee: 'Купить автору кофе',
+    switchToDark: 'Переключить на тёмную тему',
+    switchToLight: 'Переключить на светлую тему',
+    toastDarkTheme: '🌙 Тёмная тема',
+    toastLightTheme: '☀️ Светлая тема',
+    toastReorderMode: 'Режим изменения порядка: перетащите карточки',
+    toastReorderSaved: '✓ Порядок сохранён',
+    toastReorderCancelled: 'Изменения отменены',
+    toastCurrencyRemoved: (c) => `${c} удалён`,
+    toastSettingsSaved: '✓ Настройки сохранены',
+    toastExportStart: '📸 Генерация изображения...',
+    toastExportDone: '✓ Изображение сохранено!',
+    toastExportError: (e) => `⚠️ Ошибка экспорта: ${e}`,
+    toastRatesUpdating: '🔄 Обновление курсов...',
+    toastRatesUpdated: '✓ Курсы обновлены',
+    toastRatesError: '⚠️ Не удалось обновить',
+    toastRatesCheckNet: '⚠️ Не удалось загрузить курсы. Проверьте интернет.',
+    catPopular: '⭐ Популярные',
+    catCis: '🌍 СНГ и соседи',
+    catFiat: '💵 Другие валюты',
+    catCrypto: '🪙 Криптовалюты',
+  },
+  en: {
+    appTitle: 'Currency converter',
+    headerTitle: 'Currency converter',
+    appSubtitle: 'Currency & crypto converter',
+    setupStep1Title: 'Select source currency',
+    setupStep2Title: 'Select target currencies',
+    setupStep2Hint: 'Select one or more currencies',
+    searchCurrency: 'Search currency...',
+    searchShort: 'Search...',
+    nextBtn: 'Next →',
+    startBtn: 'Get started 🚀',
+    startBtnCount: (n) => `Get started (${n}) 🚀`,
+    refreshRates: 'Refresh rates',
+    toggleTheme: 'Toggle theme',
+    exportPNG: 'Export to PNG',
+    settings: 'Settings',
+    language: 'Language',
+    sourceCurrency: 'Source currency',
+    targetCurrencies: 'Target currencies',
+    save: 'Save',
+    cancel: 'Cancel',
+    reorderInfo: 'Currency order (drag to reorder)',
+    holdToDrag: 'Hold to drag',
+    deleteCurrency: 'Remove',
+    loadingRates: 'Loading exchange rates...',
+    ratesNotLoaded: 'Rates not loaded',
+    ratesUpdated: (date, time) => `Rates updated: ${date}, ${time}`,
+    ratesAsOf: (date) => `Rates as of ${date}`,
+    unitRate: (src, unit) => `1 ${src} = ${unit}`,
+    buyCoffee: 'Buy me a coffee',
+    switchToDark: 'Switch to dark theme',
+    switchToLight: 'Switch to light theme',
+    toastDarkTheme: '🌙 Dark theme',
+    toastLightTheme: '☀️ Light theme',
+    toastReorderMode: 'Reorder mode: drag cards to reorder',
+    toastReorderSaved: '✓ Order saved',
+    toastReorderCancelled: 'Changes cancelled',
+    toastCurrencyRemoved: (c) => `${c} removed`,
+    toastSettingsSaved: '✓ Settings saved',
+    toastExportStart: '📸 Generating image...',
+    toastExportDone: '✓ Image saved!',
+    toastExportError: (e) => `⚠️ Export error: ${e}`,
+    toastRatesUpdating: '🔄 Refreshing rates...',
+    toastRatesUpdated: '✓ Rates updated',
+    toastRatesError: '⚠️ Failed to update',
+    toastRatesCheckNet: '⚠️ Failed to load rates. Check connection.',
+    catPopular: '⭐ Popular',
+    catCis: '🌍 CIS & Neighbours',
+    catFiat: '💵 Other Currencies',
+    catCrypto: '🪙 Cryptocurrencies',
+  }
+};
+
+function t(key, ...args) {
+  const dict = I18N[currentLang] || I18N.ru;
+  const val = dict[key] !== undefined ? dict[key] : (I18N.ru[key] !== undefined ? I18N.ru[key] : key);
+  return typeof val === 'function' ? val(...args) : val;
+}
 
 // ============ CURRENCY DATABASE ============
 const CURRENCIES = {
   // — Popular fiat —
-  rub: { name: 'Российский рубль',     symbol: '₽',  cc: 'ru',  cat: 'popular' },
-  usd: { name: 'Доллар США',           symbol: '$',  cc: 'us',  cat: 'popular' },
-  eur: { name: 'Евро',                 symbol: '€',  cc: 'eu',  cat: 'popular' },
-  gbp: { name: 'Фунт стерлингов',      symbol: '£',  cc: 'gb',  cat: 'popular' },
-  cny: { name: 'Китайский юань',       symbol: '¥',  cc: 'cn',  cat: 'popular' },
-  jpy: { name: 'Японская иена',        symbol: '¥',  cc: 'jp',  cat: 'popular' },
-  chf: { name: 'Швейцарский франк',    symbol: 'Fr', cc: 'ch',  cat: 'popular' },
-  try: { name: 'Турецкая лира',        symbol: '₺',  cc: 'tr',  cat: 'popular' },
-  inr: { name: 'Индийская рупия',      symbol: '₹',  cc: 'in',  cat: 'popular' },
-  krw: { name: 'Южнокорейская вона',   symbol: '₩',  cc: 'kr',  cat: 'popular' },
+  rub: { nameRu: 'Российский рубль',     nameEn: 'Russian Ruble',       symbol: '₽',  cc: 'ru',  cat: 'popular' },
+  usd: { nameRu: 'Доллар США',           nameEn: 'US Dollar',           symbol: '$',  cc: 'us',  cat: 'popular' },
+  eur: { nameRu: 'Евро',                 nameEn: 'Euro',                symbol: '€',  cc: 'eu',  cat: 'popular' },
+  gbp: { nameRu: 'Фунт стерлингов',      nameEn: 'British Pound',       symbol: '£',  cc: 'gb',  cat: 'popular' },
+  cny: { nameRu: 'Китайский юань',       nameEn: 'Chinese Yuan',        symbol: '¥',  cc: 'cn',  cat: 'popular' },
+  jpy: { nameRu: 'Японская иена',        nameEn: 'Japanese Yen',        symbol: '¥',  cc: 'jp',  cat: 'popular' },
+  chf: { nameRu: 'Швейцарский франк',    nameEn: 'Swiss Franc',         symbol: 'Fr', cc: 'ch',  cat: 'popular' },
+  try: { nameRu: 'Турецкая лира',        nameEn: 'Turkish Lira',        symbol: '₺',  cc: 'tr',  cat: 'popular' },
+  inr: { nameRu: 'Индийская рупия',      nameEn: 'Indian Rupee',        symbol: '₹',  cc: 'in',  cat: 'popular' },
+  krw: { nameRu: 'Южнокорейская вона',   nameEn: 'South Korean Won',    symbol: '₩',  cc: 'kr',  cat: 'popular' },
 
   // — CIS & neighbours —
-  byn: { name: 'Белорусский рубль',    symbol: 'Br', cc: 'by',  cat: 'cis' },
-  uah: { name: 'Украинская гривна',    symbol: '₴',  cc: 'ua',  cat: 'cis' },
-  kzt: { name: 'Казахский тенге',      symbol: '₸',  cc: 'kz',  cat: 'cis' },
-  uzs: { name: 'Узбекский сум',        symbol: 'сўм',cc: 'uz',  cat: 'cis' },
-  gel: { name: 'Грузинский лари',      symbol: '₾',  cc: 'ge',  cat: 'cis' },
-  azn: { name: 'Азербайджанский манат', symbol: '₼', cc: 'az',  cat: 'cis' },
-  amd: { name: 'Армянский драм',       symbol: '֏',  cc: 'am',  cat: 'cis' },
-  mdl: { name: 'Молдавский лей',       symbol: 'L',  cc: 'md',  cat: 'cis' },
-  kgs: { name: 'Киргизский сом',       symbol: 'С',  cc: 'kg',  cat: 'cis' },
-  tjs: { name: 'Таджикский сомони',    symbol: 'SM', cc: 'tj',  cat: 'cis' },
+  byn: { nameRu: 'Белорусский рубль',    nameEn: 'Belarusian Ruble',    symbol: 'Br', cc: 'by',  cat: 'cis' },
+  uah: { nameRu: 'Украинская гривна',    nameEn: 'Ukrainian Hryvnia',   symbol: '₴',  cc: 'ua',  cat: 'cis' },
+  kzt: { nameRu: 'Казахский тенге',      nameEn: 'Kazakhstani Tenge',   symbol: '₸',  cc: 'kz',  cat: 'cis' },
+  uzs: { nameRu: 'Узбекский сум',        nameEn: 'Uzbekistani Som',     symbol: 'сўм',cc: 'uz',  cat: 'cis' },
+  gel: { nameRu: 'Грузинский лари',      nameEn: 'Georgian Lari',       symbol: '₾',  cc: 'ge',  cat: 'cis' },
+  azn: { nameRu: 'Азербайджанский манат', nameEn: 'Azerbaijani Manat',   symbol: '₼',  cc: 'az',  cat: 'cis' },
+  amd: { nameRu: 'Армянский драм',       nameEn: 'Armenian Dram',       symbol: '֏',  cc: 'am',  cat: 'cis' },
+  mdl: { nameRu: 'Молдавский лей',       nameEn: 'Moldovan Leu',        symbol: 'L',  cc: 'md',  cat: 'cis' },
+  kgs: { nameRu: 'Киргизский сом',       nameEn: 'Kyrgyzstani Som',     symbol: 'С',  cc: 'kg',  cat: 'cis' },
+  tjs: { nameRu: 'Таджикский сомони',    nameEn: 'Tajikistani Somoni',  symbol: 'SM', cc: 'tj',  cat: 'cis' },
 
   // — Other fiat —
-  cad: { name: 'Канадский доллар',     symbol: 'C$', cc: 'ca',  cat: 'fiat' },
-  aud: { name: 'Австралийский доллар',  symbol: 'A$', cc: 'au',  cat: 'fiat' },
-  nzd: { name: 'Новозеландский доллар', symbol: 'NZ$',cc: 'nz', cat: 'fiat' },
-  sgd: { name: 'Сингапурский доллар',  symbol: 'S$', cc: 'sg',  cat: 'fiat' },
-  hkd: { name: 'Гонконгский доллар',   symbol: 'HK$',cc: 'hk', cat: 'fiat' },
-  sek: { name: 'Шведская крона',       symbol: 'kr', cc: 'se',  cat: 'fiat' },
-  nok: { name: 'Норвежская крона',     symbol: 'kr', cc: 'no',  cat: 'fiat' },
-  dkk: { name: 'Датская крона',        symbol: 'kr', cc: 'dk',  cat: 'fiat' },
-  pln: { name: 'Польский злотый',      symbol: 'zł', cc: 'pl',  cat: 'fiat' },
-  czk: { name: 'Чешская крона',        symbol: 'Kč', cc: 'cz',  cat: 'fiat' },
-  huf: { name: 'Венгерский форинт',    symbol: 'Ft', cc: 'hu',  cat: 'fiat' },
-  ron: { name: 'Румынский лей',        symbol: 'lei',cc: 'ro',  cat: 'fiat' },
-  bgn: { name: 'Болгарский лев',       symbol: 'лв', cc: 'bg',  cat: 'fiat' },
-  ils: { name: 'Израильский шекель',   symbol: '₪',  cc: 'il',  cat: 'fiat' },
-  zar: { name: 'Южноафриканский рэнд', symbol: 'R',  cc: 'za',  cat: 'fiat' },
-  brl: { name: 'Бразильский реал',     symbol: 'R$', cc: 'br',  cat: 'fiat' },
-  mxn: { name: 'Мексиканское песо',    symbol: 'Mex$',cc:'mx',  cat: 'fiat' },
-  ars: { name: 'Аргентинское песо',    symbol: 'AR$',cc: 'ar',  cat: 'fiat' },
-  thb: { name: 'Тайский бат',          symbol: '฿',  cc: 'th',  cat: 'fiat' },
-  idr: { name: 'Индонезийская рупия',  symbol: 'Rp', cc: 'id',  cat: 'fiat' },
-  myr: { name: 'Малайзийский ринггит', symbol: 'RM', cc: 'my',  cat: 'fiat' },
-  php: { name: 'Филиппинское песо',    symbol: '₱',  cc: 'ph',  cat: 'fiat' },
-  vnd: { name: 'Вьетнамский донг',     symbol: '₫',  cc: 'vn',  cat: 'fiat' },
-  egp: { name: 'Египетский фунт',      symbol: 'E£', cc: 'eg',  cat: 'fiat' },
-  aed: { name: 'Дирхам ОАЭ',          symbol: 'د.إ',cc: 'ae',  cat: 'fiat' },
-  sar: { name: 'Саудовский риял',      symbol: '﷼',  cc: 'sa',  cat: 'fiat' },
-  qar: { name: 'Катарский риял',       symbol: 'QR', cc: 'qa',  cat: 'fiat' },
-  twd: { name: 'Тайваньский доллар',   symbol: 'NT$',cc: 'tw',  cat: 'fiat' },
-  rsd: { name: 'Сербский динар',       symbol: 'din',cc: 'rs',  cat: 'fiat' },
+  cad: { nameRu: 'Канадский доллар',     nameEn: 'Canadian Dollar',     symbol: 'C$', cc: 'ca',  cat: 'fiat' },
+  aud: { nameRu: 'Австралийский доллар',  nameEn: 'Australian Dollar',   symbol: 'A$', cc: 'au',  cat: 'fiat' },
+  nzd: { nameRu: 'Новозеландский доллар', nameEn: 'New Zealand Dollar',  symbol: 'NZ$',cc: 'nz', cat: 'fiat' },
+  sgd: { nameRu: 'Сингапурский доллар',  nameEn: 'Singapore Dollar',    symbol: 'S$', cc: 'sg',  cat: 'fiat' },
+  hkd: { nameRu: 'Гонконгский доллар',   nameEn: 'Hong Kong Dollar',    symbol: 'HK$',cc: 'hk', cat: 'fiat' },
+  sek: { nameRu: 'Шведская крона',       nameEn: 'Swedish Krona',       symbol: 'kr', cc: 'se',  cat: 'fiat' },
+  nok: { nameRu: 'Норвежская крона',     nameEn: 'Norwegian Krone',     symbol: 'kr', cc: 'no',  cat: 'fiat' },
+  dkk: { nameRu: 'Датская крона',        nameEn: 'Danish Krone',        symbol: 'kr', cc: 'dk',  cat: 'fiat' },
+  pln: { nameRu: 'Польский злотый',      nameEn: 'Polish Zloty',        symbol: 'zł', cc: 'pl',  cat: 'fiat' },
+  czk: { nameRu: 'Чешская крона',        nameEn: 'Czech Koruna',        symbol: 'Kč', cc: 'cz',  cat: 'fiat' },
+  huf: { nameRu: 'Венгерский форинт',    nameEn: 'Hungarian Forint',    symbol: 'Ft', cc: 'hu',  cat: 'fiat' },
+  ron: { nameRu: 'Румынский лей',        nameEn: 'Romanian Leu',        symbol: 'lei',cc: 'ro',  cat: 'fiat' },
+  bgn: { nameRu: 'Болгарский лев',       nameEn: 'Bulgarian Lev',       symbol: 'лв', cc: 'bg',  cat: 'fiat' },
+  ils: { nameRu: 'Израильский шекель',   nameEn: 'Israeli Shekel',      symbol: '₪',  cc: 'il',  cat: 'fiat' },
+  zar: { nameRu: 'Южноафриканский рэнд', nameEn: 'South African Rand',  symbol: 'R',  cc: 'za',  cat: 'fiat' },
+  brl: { nameRu: 'Бразильский реал',     nameEn: 'Brazilian Real',      symbol: 'R$', cc: 'br',  cat: 'fiat' },
+  mxn: { nameRu: 'Мексиканское песо',    nameEn: 'Mexican Peso',        symbol: 'Mex$',cc:'mx',  cat: 'fiat' },
+  ars: { nameRu: 'Аргентинское песо',    nameEn: 'Argentine Peso',      symbol: 'AR$',cc: 'ar',  cat: 'fiat' },
+  thb: { nameRu: 'Тайский бат',          nameEn: 'Thai Baht',          symbol: '฿',  cc: 'th',  cat: 'fiat' },
+  idr: { nameRu: 'Индонезийская рупия',  nameEn: 'Indonesian Rupiah',  symbol: 'Rp', cc: 'id',  cat: 'fiat' },
+  myr: { nameRu: 'Малайзийский ринггит', nameEn: 'Malaysian Ringgit',  symbol: 'RM', cc: 'my',  cat: 'fiat' },
+  php: { nameRu: 'Филиппинское песо',    nameEn: 'Philippine Peso',     symbol: '₱',  cc: 'ph',  cat: 'fiat' },
+  vnd: { nameRu: 'Вьетнамский донг',     nameEn: 'Vietnamese Dong',     symbol: '₫',  cc: 'vn',  cat: 'fiat' },
+  egp: { nameRu: 'Египетский фунт',      nameEn: 'Egyptian Pound',      symbol: 'E£', cc: 'eg',  cat: 'fiat' },
+  aed: { nameRu: 'Дирхам ОАЭ',          nameEn: 'UAE Dirham',          symbol: 'د.إ',cc: 'ae',  cat: 'fiat' },
+  sar: { nameRu: 'Саудовский риял',      nameEn: 'Saudi Riyal',         symbol: '﷼',  cc: 'sa',  cat: 'fiat' },
+  qar: { nameRu: 'Катарский риял',       nameEn: 'Qatari Riyal',        symbol: 'QR', cc: 'qa',  cat: 'fiat' },
+  twd: { nameRu: 'Тайваньский доллар',   nameEn: 'New Taiwan Dollar',   symbol: 'NT$',cc: 'tw',  cat: 'fiat' },
+  rsd: { nameRu: 'Сербский динар',       nameEn: 'Serbian Dinar',       symbol: 'din',cc: 'rs',  cat: 'fiat' },
 
   // — Crypto —
-  btc:  { name: 'Bitcoin',    symbol: '₿',   cc: null, cat: 'crypto', color: '#f7931a' },
-  eth:  { name: 'Ethereum',   symbol: 'Ξ',   cc: null, cat: 'crypto', color: '#627eea' },
-  usdt: { name: 'Tether',     symbol: '₮',   cc: null, cat: 'crypto', color: '#26a17b' },
-  bnb:  { name: 'BNB',        symbol: 'BNB', cc: null, cat: 'crypto', color: '#f3ba2f' },
-  xrp:  { name: 'Ripple',     symbol: 'XRP', cc: null, cat: 'crypto', color: '#00aae4' },
-  sol:  { name: 'Solana',     symbol: 'SOL', cc: null, cat: 'crypto', color: '#9945ff' },
-  ada:  { name: 'Cardano',    symbol: 'ADA', cc: null, cat: 'crypto', color: '#0033ad' },
-  doge: { name: 'Dogecoin',   symbol: 'Ð',   cc: null, cat: 'crypto', color: '#c2a633' },
-  dot:  { name: 'Polkadot',   symbol: 'DOT', cc: null, cat: 'crypto', color: '#e6007a' },
-  ltc:  { name: 'Litecoin',   symbol: 'Ł',   cc: null, cat: 'crypto', color: '#345d9d' },
-  ton:  { name: 'Toncoin',    symbol: 'TON', cc: null, cat: 'crypto', color: '#0098ea' },
-  trx:  { name: 'TRON',       symbol: 'TRX', cc: null, cat: 'crypto', color: '#ff0013' },
+  btc:  { nameRu: 'Bitcoin',    nameEn: 'Bitcoin',    symbol: '₿',   cc: null, cat: 'crypto', color: '#f7931a' },
+  eth:  { nameRu: 'Ethereum',   nameEn: 'Ethereum',   symbol: 'Ξ',   cc: null, cat: 'crypto', color: '#627eea' },
+  usdt: { nameRu: 'Tether',     nameEn: 'Tether',     symbol: '₮',   cc: null, cat: 'crypto', color: '#26a17b' },
+  bnb:  { nameRu: 'BNB',        nameEn: 'BNB',        symbol: 'BNB', cc: null, cat: 'crypto', color: '#f3ba2f' },
+  xrp:  { nameRu: 'Ripple',     nameEn: 'Ripple',     symbol: 'XRP', cc: null, cat: 'crypto', color: '#00aae4' },
+  sol:  { nameRu: 'Solana',     nameEn: 'Solana',     symbol: 'SOL', cc: null, cat: 'crypto', color: '#9945ff' },
+  ada:  { nameRu: 'Cardano',    nameEn: 'Cardano',    symbol: 'ADA', cc: null, cat: 'crypto', color: '#0033ad' },
+  doge: { nameRu: 'Dogecoin',   nameEn: 'Dogecoin',   symbol: 'Ð',   cc: null, cat: 'crypto', color: '#c2a633' },
+  dot:  { nameRu: 'Polkadot',   nameEn: 'Polkadot',   symbol: 'DOT', cc: null, cat: 'crypto', color: '#e6007a' },
+  ltc:  { nameRu: 'Litecoin',   nameEn: 'Litecoin',   symbol: 'Ł',   cc: null, cat: 'crypto', color: '#345d9d' },
+  ton:  { nameRu: 'Toncoin',    nameEn: 'Toncoin',    symbol: 'TON', cc: null, cat: 'crypto', color: '#0098ea' },
+  trx:  { nameRu: 'TRON',       nameEn: 'TRON',       symbol: 'TRX', cc: null, cat: 'crypto', color: '#ff0013' },
 };
 
-const CATEGORY_NAMES = {
-  popular: '⭐ Популярные',
-  cis:     '🌍 СНГ и соседи',
-  fiat:    '💵 Другие валюты',
-  crypto:  '🪙 Криптовалюты',
-};
+// Dynamic name accessor that returns the localized name
+for (const [code, cur] of Object.entries(CURRENCIES)) {
+  Object.defineProperty(cur, 'name', {
+    get() {
+      return currentLang === 'en' ? (cur.nameEn || cur.nameRu) : (cur.nameRu || cur.nameEn);
+    },
+    configurable: true,
+    enumerable: true
+  });
+}
+
+function getCategoryName(cat) {
+  if (cat === 'popular') return t('catPopular');
+  if (cat === 'cis') return t('catCis');
+  if (cat === 'fiat') return t('catFiat');
+  if (cat === 'crypto') return t('catCrypto');
+  return cat;
+}
+
+const CATEGORY_NAMES = new Proxy({}, {
+  get: (_, cat) => getCategoryName(cat)
+});
+
+function searchMatches(code, cur, filter) {
+  if (!filter) return true;
+  const f = filter.toLowerCase().trim();
+  return (
+    code.toLowerCase().includes(f) ||
+    (cur.nameRu && cur.nameRu.toLowerCase().includes(f)) ||
+    (cur.nameEn && cur.nameEn.toLowerCase().includes(f)) ||
+    (cur.symbol && cur.symbol.toLowerCase().includes(f))
+  );
+}
 
 const CATEGORY_ORDER = ['popular', 'cis', 'fiat', 'crypto'];
 
@@ -188,10 +339,17 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
+  const btnEl = $('#theme-btn');
+  if (btnEl) {
+    btnEl.classList.remove('toggling');
+    void btnEl.offsetWidth; // Force reflow to re-trigger animation
+    btnEl.classList.add('toggling');
+    setTimeout(() => btnEl.classList.remove('toggling'), 400);
+  }
   const current = document.documentElement.getAttribute('data-theme') || getCurrentTheme();
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
-  showToast(next === 'dark' ? '🌙 Тёмная тема' : '☀️ Светлая тема');
+  showToast(next === 'dark' ? t('toastDarkTheme') : t('toastLightTheme'));
 }
 
 function updateThemeIcon(theme) {
@@ -199,13 +357,13 @@ function updateThemeIcon(theme) {
   const btnEl = $('#theme-btn');
   if (!iconEl) return;
   if (theme === 'dark') {
-    // Sun icon to switch to light
-    iconEl.innerHTML = `<path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36l-1.06 1.06a.996.996 0 000 1.41c.39.39 1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.02-.39-1.41 0z"/>`;
-    if (btnEl) btnEl.title = 'Переключить на светлую тему';
+    // Google Material Symbols light_mode (sun)
+    iconEl.innerHTML = `<path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36l-1.06 1.06a.996.996 0 0 0 0 1.41c.39.39 1.03.39 1.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.02-.39-1.41 0z"/>`;
+    if (btnEl) btnEl.title = t('switchToLight');
   } else {
-    // Moon icon to switch to dark
-    iconEl.innerHTML = `<path fill="currentColor" d="M12.3 2a10 10 0 00-1.9 19.8 10 10 0 0010.5-12.8A8 8 0 0112.3 2z"/>`;
-    if (btnEl) btnEl.title = 'Переключить на тёмную тему';
+    // Official Google Material Design dark_mode (smooth crescent moon)
+    iconEl.innerHTML = `<path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>`;
+    if (btnEl) btnEl.title = t('switchToDark');
   }
 }
 
@@ -323,7 +481,8 @@ function formatNumber(num, currency) {
     decimals = Math.max(decimals, 6);
   }
 
-  return new Intl.NumberFormat('ru-RU', {
+  const locale = currentLang === 'en' ? 'en-US' : 'ru-RU';
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
   }).format(num);
@@ -338,7 +497,8 @@ function parseAmountInput(val) {
 
 function formatAmountInput(num) {
   if (!num && num !== 0) return '';
-  return new Intl.NumberFormat('ru-RU', {
+  const locale = currentLang === 'en' ? 'en-US' : 'ru-RU';
+  return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 10,
     useGrouping: true,
   }).format(num);
@@ -627,8 +787,7 @@ function renderSetupSourceList(filter = '') {
   for (const cat of CATEGORY_ORDER) {
     const entries = Object.entries(CURRENCIES).filter(([code, c]) => {
       if (c.cat !== cat) return false;
-      if (!f) return true;
-      return code.includes(f) || c.name.toLowerCase().includes(f) || (c.symbol && c.symbol.toLowerCase().includes(f));
+      return searchMatches(code, c, f);
     });
     if (entries.length === 0) continue;
 
@@ -666,8 +825,7 @@ function renderSetupTargetList(filter = '') {
     const entries = Object.entries(CURRENCIES).filter(([code, c]) => {
       if (c.cat !== cat) return false;
       if (code === setupSource) return false;
-      if (!f) return true;
-      return code.includes(f) || c.name.toLowerCase().includes(f) || (c.symbol && c.symbol.toLowerCase().includes(f));
+      return searchMatches(code, c, f);
     });
     if (entries.length === 0) continue;
 
@@ -695,8 +853,8 @@ function renderSetupTargetList(filter = '') {
         }
         $('#setup-start-btn').disabled = setupTargets.size === 0;
         $('#setup-start-btn').textContent = setupTargets.size > 0
-          ? `Начать (${setupTargets.size}) 🚀`
-          : 'Начать 🚀';
+          ? t('startBtnCount', setupTargets.size)
+          : t('startBtn');
       });
       container.appendChild(card);
     }
@@ -715,7 +873,7 @@ async function showMainScreen() {
   // Fetch rates
   const ok = await ensureRates();
   if (!ok) {
-    showToast('⚠️ Не удалось загрузить курсы. Проверьте интернет.');
+    showToast(t('toastRatesCheckNet'));
   }
   renderConversionCards(false);
   updateLastUpdated();
@@ -733,19 +891,134 @@ function updateAmountInput() {
 
 function updateLastUpdated() {
   const el = $('#last-updated');
+  if (!el) return;
+  const locale = currentLang === 'en' ? 'en-US' : 'ru-RU';
+
   if (state.cacheTime) {
     const d = new Date(state.cacheTime);
-    const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    el.textContent = `Курсы обновлены: ${dateStr}, ${timeStr}`;
+    const timeStr = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    const dateStr = d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    el.textContent = t('ratesUpdated', dateStr, timeStr);
   } else if (state.rateDate) {
     const d = new Date(state.rateDate);
     const dateStr = !isNaN(d.getTime())
-      ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+      ? d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
       : state.rateDate;
-    el.textContent = `Курсы на ${dateStr}`;
+    el.textContent = t('ratesAsOf', dateStr);
   } else {
-    el.textContent = 'Курсы не загружены';
+    el.textContent = t('ratesNotLoaded');
+  }
+}
+
+function applyLanguage(lang) {
+  currentLang = lang === 'en' ? 'en' : 'ru';
+  try {
+    localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+  } catch (e) {}
+  document.documentElement.setAttribute('lang', currentLang);
+  document.title = 'Currency converter';
+
+  // Update header and setup titles
+  const elAppName = $('#app-name');
+  if (elAppName) elAppName.textContent = t('headerTitle');
+
+  const elSetupTitle = $('#setup-title');
+  if (elSetupTitle) elSetupTitle.textContent = t('headerTitle');
+
+  // Update static UI elements
+  const elSubtitle = $('#setup-subtitle');
+  if (elSubtitle) elSubtitle.textContent = t('appSubtitle');
+
+  const elStep1Title = $('#setup-step-1-title');
+  if (elStep1Title) elStep1Title.textContent = t('setupStep1Title');
+
+  const elSearchSource = $('#setup-search-source');
+  if (elSearchSource) elSearchSource.placeholder = t('searchCurrency');
+
+  const elNextBtn = $('#setup-next-btn');
+  if (elNextBtn) elNextBtn.textContent = t('nextBtn');
+
+  const elStep2Title = $('#setup-step-2-title');
+  if (elStep2Title) elStep2Title.textContent = t('setupStep2Title');
+
+  const elStep2Hint = $('#setup-step-2-hint');
+  if (elStep2Hint) elStep2Hint.textContent = t('setupStep2Hint');
+
+  const elSearchTarget = $('#setup-search-target');
+  if (elSearchTarget) elSearchTarget.placeholder = t('searchCurrency');
+
+  const elStartBtn = $('#setup-start-btn');
+  if (elStartBtn) {
+    elStartBtn.textContent = setupTargets.size > 0
+      ? t('startBtnCount', setupTargets.size)
+      : t('startBtn');
+  }
+
+  // Header tooltips
+  const elRefreshBtn = $('#refresh-btn');
+  if (elRefreshBtn) elRefreshBtn.title = t('refreshRates');
+
+  const elExportBtn = $('#export-btn');
+  if (elExportBtn) elExportBtn.title = t('exportPNG');
+
+  const elSettingsBtn = $('#settings-btn');
+  if (elSettingsBtn) elSettingsBtn.title = t('settings');
+
+  updateThemeIcon(document.documentElement.getAttribute('data-theme') || getCurrentTheme());
+
+  // Reorder toolbar
+  const elReorderInfo = $('#reorder-info-text');
+  if (elReorderInfo) elReorderInfo.textContent = t('reorderInfo');
+
+  const elReorderCancel = $('#reorder-cancel-btn');
+  if (elReorderCancel) elReorderCancel.textContent = t('cancel');
+
+  const elReorderSave = $('#reorder-save-btn');
+  if (elReorderSave) elReorderSave.textContent = t('save');
+
+  // Tip link
+  const elTipText = $('#tip-text');
+  if (elTipText) elTipText.textContent = t('buyCoffee');
+
+  // Settings modal
+  const elSettingsTitle = $('#settings-title');
+  if (elSettingsTitle) elSettingsTitle.textContent = t('settings');
+
+  const elSettingsLangTitle = $('#settings-lang-title');
+  if (elSettingsLangTitle) elSettingsLangTitle.textContent = t('language');
+
+  const elSettingsSourceTitle = $('#settings-source-title');
+  if (elSettingsSourceTitle) elSettingsSourceTitle.textContent = t('sourceCurrency');
+
+  const elSettingsSearchSource = $('#settings-search-source');
+  if (elSettingsSearchSource) elSettingsSearchSource.placeholder = t('searchShort');
+
+  const elSettingsTargetTitle = $('#settings-target-title');
+  if (elSettingsTargetTitle) elSettingsTargetTitle.textContent = t('targetCurrencies');
+
+  const elSettingsSearchTarget = $('#settings-search-target');
+  if (elSettingsSearchTarget) elSettingsSearchTarget.placeholder = t('searchShort');
+
+  const elSettingsSave = $('#settings-save');
+  if (elSettingsSave) elSettingsSave.textContent = t('save');
+
+  // Source picker modal
+  const elSourcePickerTitle = $('#source-picker-title');
+  if (elSourcePickerTitle) elSourcePickerTitle.textContent = t('sourceCurrency');
+
+  const elSourcePickerSearch = $('#source-picker-search');
+  if (elSourcePickerSearch) elSourcePickerSearch.placeholder = t('searchShort');
+
+  // Update language selector active states
+  $$('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+
+  // Re-render conversion cards and input formatting
+  updateAmountInput();
+  updateLastUpdated();
+  if (!$('#main-screen').classList.contains('hidden')) {
+    renderConversionCards(false);
   }
 }
 
@@ -762,7 +1035,7 @@ function enterReorderMode() {
   reorderOriginalTargets = [...state.targets];
   $('#reorder-toolbar')?.classList.remove('hidden');
   $('#conversion-cards')?.classList.add('is-editing');
-  showToast('Режим изменения порядка: перетащите карточки');
+  showToast(t('toastReorderMode'));
 }
 
 function saveReorder() {
@@ -776,7 +1049,7 @@ function saveReorder() {
   }
   exitReorderMode();
   renderConversionCards(false);
-  showToast('✓ Порядок сохранён');
+  showToast(t('toastReorderSaved'));
 }
 
 function cancelReorder() {
@@ -784,7 +1057,7 @@ function cancelReorder() {
   state.targets = [...reorderOriginalTargets];
   exitReorderMode();
   renderConversionCards(false);
-  showToast('Изменения отменены');
+  showToast(t('toastReorderCancelled'));
 }
 
 function exitReorderMode() {
@@ -818,6 +1091,7 @@ function renderConversionCards(loading = false) {
     $('#reorder-toolbar')?.classList.add('hidden');
   }
 
+  let cardIndex = 0;
   for (const code of state.targets) {
     const cur = CURRENCIES[code] || { name: code.toUpperCase(), symbol: '' };
     const amount = loading ? null : getConvertedAmount(code);
@@ -827,10 +1101,11 @@ function renderConversionCards(loading = false) {
     const card = document.createElement('div');
     card.className = 'conv-card';
     card.dataset.code = code;
+    card.style.setProperty('--card-index', cardIndex++);
     card.setAttribute('draggable', 'true');
 
     card.innerHTML = `
-      <div class="conv-drag-handle" title="Зажмите для перемещения">
+      <div class="conv-drag-handle" title="${t('holdToDrag')}">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 3h2v2H9V3zm4 0h2v2h-2V3zM9 7h2v2H9V7zm4 0h2v2h-2V7zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2zm-4 4h2v2H9v-2zm4 0h2v2h-2v-2z"/></svg>
       </div>
       <div class="conv-flag">${getFlagHTML(code, 40)}</div>
@@ -840,9 +1115,9 @@ function renderConversionCards(loading = false) {
       </div>
       <div class="conv-right">
         <div class="conv-amount ${loading ? 'loading' : ''}">${loading ? '...' : formatNumber(amount, code)}</div>
-        ${unitRate ? `<div class="conv-rate">1 ${state.source.toUpperCase()} = ${unitRate}</div>` : ''}
+        ${unitRate ? `<div class="conv-rate">${t('unitRate', state.source.toUpperCase(), unitRate)}</div>` : ''}
       </div>
-      <button class="conv-delete" title="Удалить" data-code="${code}">&times;</button>`;
+      <button class="conv-delete" title="${t('deleteCurrency')}" data-code="${code}">&times;</button>`;
 
     // --- HTML5 Desktop Drag & Drop ---
     card.addEventListener('dragstart', (e) => {
@@ -944,7 +1219,7 @@ function renderConversionCards(loading = false) {
       state.targets = state.targets.filter(t => t !== code);
       saveState();
       renderConversionCards(false);
-      showToast(`${code.toUpperCase()} удалён`);
+      showToast(t('toastCurrencyRemoved', code.toUpperCase()));
     });
 
     container.appendChild(card);
@@ -959,6 +1234,12 @@ function openSettings() {
   if (isReordering) cancelReorder();
   settingsSource = state.source;
   settingsTargets = new Set(state.targets);
+
+  // Sync active language buttons
+  $$('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+
   renderSettingsSourceList();
   renderSettingsTargetList();
   $('#settings-modal').classList.remove('hidden');
@@ -984,13 +1265,13 @@ function saveSettings() {
     // Refetch rates for new source
     (async () => {
       const ok = await fetchRates(state.source);
-      if (!ok) showToast('⚠️ Не удалось загрузить курсы');
+      if (!ok) showToast(t('toastRatesError'));
       renderConversionCards(false);
       updateLastUpdated();
     })();
   }
 
-  showToast('✓ Настройки сохранены');
+  showToast(t('toastSettingsSaved'));
 }
 
 function renderSettingsSourceList(filter = '') {
@@ -1001,8 +1282,7 @@ function renderSettingsSourceList(filter = '') {
   for (const cat of CATEGORY_ORDER) {
     const entries = Object.entries(CURRENCIES).filter(([code, c]) => {
       if (c.cat !== cat) return false;
-      if (!f) return true;
-      return code.includes(f) || c.name.toLowerCase().includes(f);
+      return searchMatches(code, c, f);
     });
     if (entries.length === 0) continue;
 
@@ -1037,8 +1317,7 @@ function renderSettingsTargetList(filter = '') {
   for (const cat of CATEGORY_ORDER) {
     const entries = Object.entries(CURRENCIES).filter(([code, c]) => {
       if (c.cat !== cat) return false;
-      if (!f) return true;
-      return code.includes(f) || c.name.toLowerCase().includes(f);
+      return searchMatches(code, c, f);
     });
     if (entries.length === 0) continue;
 
@@ -1089,8 +1368,7 @@ function renderSourcePickerList(filter = '') {
   for (const cat of CATEGORY_ORDER) {
     const entries = Object.entries(CURRENCIES).filter(([code, c]) => {
       if (c.cat !== cat) return false;
-      if (!f) return true;
-      return code.includes(f) || c.name.toLowerCase().includes(f);
+      return searchMatches(code, c, f);
     });
     if (entries.length === 0) continue;
 
@@ -1114,7 +1392,7 @@ function renderSourcePickerList(filter = '') {
         updateSourceDisplay();
         renderConversionCards(true);
         const ok = await fetchRates(state.source);
-        if (!ok) showToast('⚠️ Не удалось загрузить курсы');
+        if (!ok) showToast(t('toastRatesError'));
         renderConversionCards(false);
         updateLastUpdated();
       });
@@ -1125,11 +1403,11 @@ function renderSourcePickerList(filter = '') {
 
 // ============ PNG EXPORT ============
 async function exportToPNG() {
-  showToast('📸 Генерация изображения...');
+  showToast(t('toastExportStart'));
 
   try {
     if (typeof html2canvas !== 'function') {
-      throw new Error('Библиотека html2canvas не загружена');
+      throw new Error('html2canvas library is not loaded');
     }
 
     let container = $('#export-container');
@@ -1143,7 +1421,7 @@ async function exportToPNG() {
 
     const allExportCodes = [state.source, ...state.targets];
 
-    // Загружаем флаги
+    // Preload flags
     await Promise.all(
       allExportCodes.map(code => getFlagDataUrl(code))
     );
@@ -1186,7 +1464,7 @@ async function exportToPNG() {
         </div>
       </div>`;
 
-    // Дожидаемся загрузки изображений
+    // Wait for images
     const images = [...container.querySelectorAll('img')];
 
     await Promise.all(
@@ -1196,7 +1474,6 @@ async function exportToPNG() {
         await new Promise(resolve => {
           img.onload = resolve;
           img.onerror = resolve;
-
           setTimeout(resolve, 5000);
         });
       })
@@ -1215,16 +1492,15 @@ async function exportToPNG() {
       scale: 2,
       useCORS: true,
       allowTaint: false,
-      logging: true
+      logging: false
     });
 
-    // Формируем PNG
     const blob = await new Promise(resolve => {
       canvas.toBlob(resolve, 'image/png');
     });
 
     if (!blob) {
-      throw new Error('Не удалось сформировать PNG');
+      throw new Error('Failed to create image blob');
     }
 
     const url = URL.createObjectURL(blob);
@@ -1240,11 +1516,11 @@ async function exportToPNG() {
 
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    showToast('✓ Изображение сохранено!');
+    showToast(t('toastExportDone'));
 
   } catch (error) {
     console.error('Export error:', error);
-    showToast('⚠️ Ошибка экспорта: ' + error.message, 5000);
+    showToast(t('toastExportError', error.message), 5000);
   }
 }
 
@@ -1285,54 +1561,64 @@ function initAmountInput() {
 // ============ EVENT LISTENERS ============
 function initEventListeners() {
   // Header buttons
-  $('#refresh-btn').addEventListener('click', async () => {
+  $('#refresh-btn')?.addEventListener('click', async () => {
     const btn = $('#refresh-btn');
-    btn.classList.add('spinning');
-    showToast('🔄 Обновление курсов...');
+    btn?.classList.add('spinning');
+    showToast(t('toastRatesUpdating'));
     const ok = await fetchRates(state.source, true);
-    btn.classList.remove('spinning');
+    btn?.classList.remove('spinning');
     if (ok) {
       renderConversionCards(false);
       updateLastUpdated();
-      showToast('✓ Курсы обновлены');
+      showToast(t('toastRatesUpdated'));
     } else {
-      showToast('⚠️ Не удалось обновить');
+      showToast(t('toastRatesError'));
     }
   });
 
   $('#theme-btn')?.addEventListener('click', toggleTheme);
-  $('#export-btn').addEventListener('click', exportToPNG);
-  $('#settings-btn').addEventListener('click', openSettings);
+  $('#export-btn')?.addEventListener('click', exportToPNG);
+  $('#settings-btn')?.addEventListener('click', openSettings);
+
+  // Language selector buttons in settings modal
+  $$('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const lang = btn.dataset.lang;
+      applyLanguage(lang);
+      renderSettingsSourceList($('#settings-search-source')?.value || '');
+      renderSettingsTargetList($('#settings-search-target')?.value || '');
+    });
+  });
 
   // Reorder buttons
   $('#reorder-save-btn')?.addEventListener('click', saveReorder);
   $('#reorder-cancel-btn')?.addEventListener('click', cancelReorder);
 
   // Settings modal
-  $('#settings-close').addEventListener('click', closeSettings);
-  $('#settings-save').addEventListener('click', saveSettings);
-  $('#settings-modal .modal-overlay').addEventListener('click', closeSettings);
+  $('#settings-close')?.addEventListener('click', closeSettings);
+  $('#settings-save')?.addEventListener('click', saveSettings);
+  $('#settings-modal .modal-overlay')?.addEventListener('click', closeSettings);
 
-  $('#settings-search-source').addEventListener('input', (e) => {
+  $('#settings-search-source')?.addEventListener('input', (e) => {
     renderSettingsSourceList(e.target.value);
   });
-  $('#settings-search-target').addEventListener('input', (e) => {
+  $('#settings-search-target')?.addEventListener('input', (e) => {
     renderSettingsTargetList(e.target.value);
   });
 
   // Source picker
-  $('#source-btn').addEventListener('click', openSourcePicker);
-  $('#source-picker-close').addEventListener('click', closeSourcePicker);
-  $('#source-picker-modal .modal-overlay').addEventListener('click', closeSourcePicker);
-  $('#source-picker-search').addEventListener('input', (e) => {
+  $('#source-btn')?.addEventListener('click', openSourcePicker);
+  $('#source-picker-close')?.addEventListener('click', closeSourcePicker);
+  $('#source-picker-modal .modal-overlay')?.addEventListener('click', closeSourcePicker);
+  $('#source-picker-search')?.addEventListener('input', (e) => {
     renderSourcePickerList(e.target.value);
   });
 
   // Keyboard: Escape closes modals or exits reorder mode
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (!$('#settings-modal').classList.contains('hidden')) closeSettings();
-      if (!$('#source-picker-modal').classList.contains('hidden')) closeSourcePicker();
+      if ($('#settings-modal') && !$('#settings-modal').classList.contains('hidden')) closeSettings();
+      if ($('#source-picker-modal') && !$('#source-picker-modal').classList.contains('hidden')) closeSourcePicker();
       if (isReordering) cancelReorder();
     }
   });
@@ -1340,6 +1626,9 @@ function initEventListeners() {
 
 // ============ INIT ============
 async function init() {
+  // Apply language immediately
+  applyLanguage(currentLang);
+
   // Apply saved or system theme immediately
   applyTheme(getCurrentTheme());
 
@@ -1356,6 +1645,12 @@ async function init() {
 
   initAmountInput();
   initEventListeners();
+}
+
+// Expose on window for convenience
+if (typeof window !== 'undefined') {
+  window.applyLanguage = applyLanguage;
+  window.toggleTheme = toggleTheme;
 }
 
 // Start when DOM is ready
