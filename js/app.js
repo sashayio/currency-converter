@@ -489,19 +489,62 @@ function formatNumber(num, currency) {
 }
 
 function parseAmountInput(val) {
-  // Allow both . and , as decimal separators; strip spaces
-  const cleaned = val.replace(/\s/g, '').replace(',', '.');
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
+  if (typeof val === 'number') return isNaN(val) ? 0 : Math.max(0, val);
+  if (!val) return 0;
+  let s = String(val).replace(/[\s\u00A0\u202F]/g, '').trim();
+  if (!s) return 0;
+
+  // Handle leading dot or comma (.5 -> 0.5, ,5 -> 0.5)
+  if (s.startsWith('.') || s.startsWith(',')) {
+    s = '0' + s;
+  }
+
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    if (lastDot > lastComma) {
+      // e.g. 1,234.56 -> commas are thousands separators
+      s = s.replace(/,/g, '');
+    } else {
+      // e.g. 1.234,56 -> dots are thousands separators
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+  } else if (lastComma !== -1) {
+    const commaCount = (s.match(/,/g) || []).length;
+    if (commaCount > 1) {
+      // Multiple commas e.g. 1,000,000
+      s = s.replace(/,/g, '');
+    } else {
+      // Single comma
+      const parts = s.split(',');
+      if (currentLang === 'en' && parts[1] && parts[1].length === 3 && parts[0].length >= 1 && parts[0].length <= 3) {
+        // In English locale, 1,000 is 1000
+        s = s.replace(',', '');
+      } else {
+        // In Russian or decimal comma e.g. 10,5 or 1000,50
+        s = s.replace(',', '.');
+      }
+    }
+  } else if (lastDot !== -1) {
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      // Multiple dots e.g. 1.000.000
+      s = s.replace(/\./g, '');
+    }
+  }
+
+  s = s.replace(/[^\d.-]/g, '');
+  const num = parseFloat(s);
+  return isNaN(num) ? 0 : Math.max(0, num);
 }
 
 function formatAmountInput(num) {
-  if (!num && num !== 0) return '';
-  const locale = currentLang === 'en' ? 'en-US' : 'ru-RU';
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 10,
-    useGrouping: true,
-  }).format(num);
+  if (num === null || num === undefined || isNaN(num)) return '';
+  if (num === 0) return '0';
+  if (Math.abs(num) >= 1e15) return String(num);
+  let s = Number.isInteger(num) ? String(num) : num.toFixed(8).replace(/\.?0+$/, '');
+  return s;
 }
 
 function showToast(msg, duration = 2500) {
@@ -1527,29 +1570,55 @@ async function exportToPNG() {
 // ============ AMOUNT INPUT HANDLING ============
 function initAmountInput() {
   const input = $('#amount-input');
-  let rawValue = String(state.amount);
+  if (!input) return;
 
   input.addEventListener('input', () => {
-    const pos = input.selectionStart;
-    const oldLen = input.value.length;
+    // Sanitize: allow digits, dot, comma, spaces, and minus
+    const clean = input.value.replace(/[^\d.,\s\-]/g, '');
+    if (clean !== input.value) {
+      const pos = Math.max(0, input.selectionStart - (input.value.length - clean.length));
+      input.value = clean;
+      input.setSelectionRange(pos, pos);
+    }
 
-    // Parse the raw number
-    rawValue = input.value.replace(/[^\d.,\-]/g, '');
-    const num = parseAmountInput(rawValue);
+    const trimmed = input.value.trim();
+    if (trimmed === '' || trimmed === '.' || trimmed === ',' || trimmed === '-') {
+      state.amount = 0;
+      saveState();
+      renderConversionCards(false);
+      return;
+    }
+
+    const num = parseAmountInput(input.value);
     state.amount = num;
     saveState();
 
-    // Format display
-    const formatted = formatAmountInput(num);
-    input.value = formatted;
-
-    // Try to preserve cursor position
-    const newLen = formatted.length;
-    const diff = newLen - oldLen;
-    input.setSelectionRange(pos + diff, pos + diff);
-
-    // Re-render cards
+    // Re-render conversion cards with the new amount in real time.
+    // Crucially: We do NOT reformat or overwrite input.value here while typing.
+    // This eliminates:
+    // 1) The comma bug in ENG mode where 1,000 was converted to 1.000 and blocked typing > 1000.
+    // 2) Erasing decimal separators (dots or commas) and trailing zeros when typing fractions (e.g. 10.5).
+    // 3) Cursor jumping and backspace trapping.
     renderConversionCards(false);
+  });
+
+  input.addEventListener('blur', () => {
+    const trimmed = input.value.trim();
+    if (trimmed === '' || isNaN(state.amount) || state.amount === 0) {
+      state.amount = 0;
+      input.value = '0';
+      saveState();
+      renderConversionCards(false);
+    } else {
+      // Normalize cleanly on blur (e.g. cleans up pasted "1,000,000" or trailing dot "100." -> "100")
+      input.value = formatAmountInput(state.amount);
+    }
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      input.blur();
+    }
   });
 
   input.addEventListener('focus', () => {
