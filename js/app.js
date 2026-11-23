@@ -83,6 +83,18 @@ const I18N = {
     catCis: '🌍 СНГ и соседи',
     catFiat: '💵 Другие валюты',
     catCrypto: '🪙 Криптовалюты',
+    editRateTitle: 'Задать свой курс обмена',
+    resetRateTitle: 'Вернуть рыночный курс',
+    customRateBadge: 'Свой',
+    customRateTitle: 'Курс обмена',
+    marketRateLabel: 'Рыночный курс:',
+    useMarketBtn: 'Взять рыночный',
+    ratePreviewTitle: 'Расчет для текущей суммы:',
+    apply: 'Применить',
+    reset: 'Сбросить',
+    toastCustomRateSet: (c) => `✓ Установлен свой курс для ${c.toUpperCase()}`,
+    toastCustomRateReset: (c) => `✓ Рыночный курс для ${c.toUpperCase()} восстановлен`,
+    toastInvalidRate: '⚠️ Введите корректный курс',
   },
   en: {
     appTitle: 'Currency converter',
@@ -134,6 +146,18 @@ const I18N = {
     catCis: '🌍 CIS & Neighbours',
     catFiat: '💵 Other Currencies',
     catCrypto: '🪙 Cryptocurrencies',
+    editRateTitle: 'Set custom exchange rate',
+    resetRateTitle: 'Reset to market rate',
+    customRateBadge: 'Custom',
+    customRateTitle: 'Exchange Rate',
+    marketRateLabel: 'Market rate:',
+    useMarketBtn: 'Use market',
+    ratePreviewTitle: 'Calculation for current amount:',
+    apply: 'Apply',
+    reset: 'Reset',
+    toastCustomRateSet: (c) => `✓ Custom rate set for ${c.toUpperCase()}`,
+    toastCustomRateReset: (c) => `✓ Reset to market rate for ${c.toUpperCase()}`,
+    toastInvalidRate: '⚠️ Please enter a valid rate',
   }
 };
 
@@ -257,6 +281,7 @@ let state = {
   targets: ['usd', 'eur', 'byn'],
   amount:  1000,
   rates:   {},          // { usd: 0.0108, eur: 0.0099, ... }
+  customRates: {},      // { 'rub_usd': 0.0104166, ... }
   rateDate: null,
   cacheTime: 0,
 };
@@ -562,6 +587,7 @@ function saveState() {
     targets: state.targets,
     amount: state.amount,
     rates: state.rates,
+    customRates: state.customRates || {},
     rateDate: state.rateDate,
     cacheTime: state.cacheTime,
   };
@@ -579,6 +605,7 @@ function loadState() {
     if (Array.isArray(data.targets) && data.targets.length) state.targets = data.targets;
     if (typeof data.amount === 'number') state.amount = data.amount;
     if (data.rates) state.rates = data.rates;
+    if (data.customRates && typeof data.customRates === 'object') state.customRates = data.customRates;
     if (data.rateDate) state.rateDate = data.rateDate;
     if (data.cacheTime) state.cacheTime = data.cacheTime;
     return true;
@@ -780,8 +807,51 @@ async function ensureRates(force = false) {
   return await fetchRates(state.source, force);
 }
 
+function getPairKey(source, target) {
+  return `${(source || '').toLowerCase()}_${(target || '').toLowerCase()}`;
+}
+
+function getEffectiveRate(targetCode) {
+  if (!targetCode) return null;
+  const tgt = targetCode.toLowerCase();
+  const pairKey = getPairKey(state.source, tgt);
+  if (state.customRates && typeof state.customRates[pairKey] === 'number' && state.customRates[pairKey] > 0) {
+    return state.customRates[pairKey];
+  }
+  return state.rates ? state.rates[tgt] : null;
+}
+
+function isCustomRate(targetCode) {
+  if (!targetCode) return false;
+  const pairKey = getPairKey(state.source, targetCode);
+  return Boolean(state.customRates && typeof state.customRates[pairKey] === 'number' && state.customRates[pairKey] > 0);
+}
+
+function setCustomRate(targetCode, rateVal) {
+  if (!state.customRates) state.customRates = {};
+  const pairKey = getPairKey(state.source, targetCode);
+  if (rateVal && rateVal > 0) {
+    state.customRates[pairKey] = rateVal;
+  } else {
+    delete state.customRates[pairKey];
+  }
+  saveState();
+  renderConversionCards(false);
+  showToast(t('toastCustomRateSet', targetCode.toUpperCase()));
+}
+
+function resetCustomRate(targetCode) {
+  const pairKey = getPairKey(state.source, targetCode);
+  if (state.customRates && state.customRates[pairKey]) {
+    delete state.customRates[pairKey];
+    saveState();
+    renderConversionCards(false);
+    showToast(t('toastCustomRateReset', targetCode.toUpperCase()));
+  }
+}
+
 function getConvertedAmount(targetCode) {
-  const rate = state.rates[targetCode];
+  const rate = getEffectiveRate(targetCode);
   if (!rate) return null;
   return state.amount * rate;
 }
@@ -1052,6 +1122,25 @@ function applyLanguage(lang) {
   const elSourcePickerSearch = $('#source-picker-search');
   if (elSourcePickerSearch) elSourcePickerSearch.placeholder = t('searchShort');
 
+  // Rate modal
+  const elRateModalTitle = $('#rate-modal-title');
+  if (elRateModalTitle) elRateModalTitle.textContent = t('customRateTitle');
+
+  const elRateMarketCaption = $('#rate-market-caption');
+  if (elRateMarketCaption) elRateMarketCaption.textContent = t('marketRateLabel');
+
+  const elRateUseMarketBtn = $('#rate-use-market-btn');
+  if (elRateUseMarketBtn) elRateUseMarketBtn.textContent = t('useMarketBtn');
+
+  const elRatePreviewTitle = $('#rate-preview-title');
+  if (elRatePreviewTitle) elRatePreviewTitle.textContent = t('ratePreviewTitle');
+
+  const elRateModalReset = $('#rate-modal-reset');
+  if (elRateModalReset) elRateModalReset.textContent = t('reset');
+
+  const elRateModalSave = $('#rate-modal-save');
+  if (elRateModalSave) elRateModalSave.textContent = t('apply');
+
   // Update language selector active states
   $$('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
@@ -1138,7 +1227,8 @@ function renderConversionCards(loading = false) {
   for (const code of state.targets) {
     const cur = CURRENCIES[code] || { name: code.toUpperCase(), symbol: '' };
     const amount = loading ? null : getConvertedAmount(code);
-    const rate = state.rates[code];
+    const isCustom = isCustomRate(code);
+    const rate = getEffectiveRate(code);
     const unitRate = rate ? formatNumber(rate, code) : '';
 
     const card = document.createElement('div');
@@ -1158,7 +1248,15 @@ function renderConversionCards(loading = false) {
       </div>
       <div class="conv-right">
         <div class="conv-amount ${loading ? 'loading' : ''}">${loading ? '...' : formatNumber(amount, code)}</div>
-        ${unitRate ? `<div class="conv-rate">${t('unitRate', state.source.toUpperCase(), unitRate)}</div>` : ''}
+        ${unitRate ? `
+          <div class="conv-rate ${isCustom ? 'is-custom' : ''}">
+            <button type="button" class="conv-rate-btn ${isCustom ? 'is-custom' : ''}" data-code="${code}" title="${t('editRateTitle')}" draggable="false">
+              ${isCustom ? `<span class="custom-badge">${t('customRateBadge')}</span>` : ''}
+              <span class="rate-text">${t('unitRate', state.source.toUpperCase(), unitRate)}</span>
+              <span class="rate-edit-icon">✎</span>
+            </button>
+            ${isCustom ? `<button type="button" class="conv-rate-reset" data-code="${code}" title="${t('resetRateTitle')}" draggable="false">↺</button>` : ''}
+          </div>` : ''}
       </div>
       <button class="conv-delete" title="${t('deleteCurrency')}" data-code="${code}">&times;</button>`;
 
@@ -1193,6 +1291,7 @@ function renderConversionCards(loading = false) {
     let touchStartY = 0;
 
     card.addEventListener('touchstart', (e) => {
+      if (e.target.closest('.conv-rate') || e.target.closest('.conv-delete')) return;
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       touchStartX = touch.clientX;
@@ -1255,6 +1354,19 @@ function renderConversionCards(loading = false) {
       cleanupTouchDrag();
     });
 
+    // Custom rate handlers
+    card.querySelector('.conv-rate-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isReordering) return;
+      openRateModal(code);
+    });
+
+    card.querySelector('.conv-rate-reset')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isReordering) return;
+      resetCustomRate(code);
+    });
+
     // Delete handler
     card.querySelector('.conv-delete')?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1267,6 +1379,200 @@ function renderConversionCards(loading = false) {
 
     container.appendChild(card);
   }
+}
+
+// ============ CUSTOM RATE MODAL ============
+let activeRateCode = null;
+let isUpdatingRateInputs = false;
+
+function formatRateInput(num) {
+  if (!num || isNaN(num)) return '';
+  if (num >= 100) return num.toFixed(2).replace(/\.?0+$/, '');
+  if (num >= 1) return num.toFixed(4).replace(/\.?0+$/, '');
+  return Number(num.toPrecision(6)).toString();
+}
+
+function parseRateInput(val) {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const s = String(val).replace(/[\s\u00A0\u202F]/g, '').replace(',', '.').trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function updateRateModalPreview(s2tRate) {
+  const previewVal = $('#rate-preview-val');
+  if (!previewVal) return;
+  if (s2tRate > 0 && activeRateCode) {
+    const converted = state.amount * s2tRate;
+    previewVal.textContent = `${formatNumber(converted, activeRateCode)} ${activeRateCode.toUpperCase()}`;
+  } else {
+    previewVal.textContent = '—';
+  }
+}
+
+function openRateModal(targetCode) {
+  if (isReordering) cancelReorder();
+  activeRateCode = targetCode.toLowerCase();
+  const srcCode = state.source.toLowerCase();
+  const tgtCode = activeRateCode;
+
+  const srcCur = CURRENCIES[srcCode] || { name: srcCode.toUpperCase() };
+  const tgtCur = CURRENCIES[tgtCode] || { name: tgtCode.toUpperCase() };
+
+  // Set modal header & pair info
+  $('#rate-modal-title').textContent = t('customRateTitle');
+  $('#rate-modal-src-flag').innerHTML = getFlagHTML(srcCode, 28);
+  $('#rate-modal-tgt-flag').innerHTML = getFlagHTML(tgtCode, 28);
+  $('#rate-modal-pair-codes').textContent = `${srcCode.toUpperCase()} → ${tgtCode.toUpperCase()}`;
+  $('#rate-modal-pair-names').textContent = `${srcCur.name} → ${tgtCur.name}`;
+
+  // Field labels and units
+  $('#rate-label-target-to-source').textContent = `1 ${tgtCode.toUpperCase()} =`;
+  $('#rate-unit-t2s').textContent = srcCode.toUpperCase();
+
+  $('#rate-label-source-to-target').textContent = `1 ${srcCode.toUpperCase()} =`;
+  $('#rate-unit-s2t').textContent = tgtCode.toUpperCase();
+
+  // Current market rate
+  const marketS2T = state.rates ? state.rates[tgtCode] : null;
+  const marketT2S = marketS2T ? (1 / marketS2T) : null;
+  const marketNumEl = $('#rate-market-num');
+  const marketBtn = $('#rate-use-market-btn');
+
+  if (marketS2T && marketT2S) {
+    const formattedT2S = formatNumber(marketT2S, srcCode);
+    marketNumEl.textContent = `1 ${tgtCode.toUpperCase()} = ${formattedT2S} ${srcCode.toUpperCase()}`;
+    marketBtn.disabled = false;
+  } else {
+    marketNumEl.textContent = '—';
+    marketBtn.disabled = true;
+  }
+
+  // Current effective rate
+  const effS2T = getEffectiveRate(tgtCode);
+  const effT2S = effS2T ? (1 / effS2T) : null;
+
+  isUpdatingRateInputs = true;
+  $('#rate-input-s2t').value = effS2T ? formatRateInput(effS2T) : '';
+  $('#rate-input-t2s').value = effT2S ? formatRateInput(effT2S) : '';
+  isUpdatingRateInputs = false;
+
+  // Preview current amount
+  $('#rate-preview-src').textContent = `${formatNumber(state.amount, srcCode)} ${srcCode.toUpperCase()}`;
+  updateRateModalPreview(effS2T);
+
+  // Buttons state & text
+  const isCustom = isCustomRate(tgtCode);
+  const resetBtn = $('#rate-modal-reset');
+  if (resetBtn) {
+    resetBtn.style.display = isCustom ? 'inline-flex' : 'none';
+  }
+
+  $('#rate-modal').classList.remove('hidden');
+
+  // Focus primary input after transition
+  setTimeout(() => {
+    $('#rate-input-t2s')?.focus();
+    $('#rate-input-t2s')?.select();
+  }, 100);
+}
+
+function closeRateModal() {
+  $('#rate-modal').classList.add('hidden');
+  activeRateCode = null;
+}
+
+function initRateModal() {
+  const modal = $('#rate-modal');
+  if (!modal) return;
+
+  const closeBtn = $('#rate-modal-close');
+  const overlay = modal.querySelector('.modal-overlay');
+  const inputT2S = $('#rate-input-t2s');
+  const inputS2T = $('#rate-input-s2t');
+  const useMarketBtn = $('#rate-use-market-btn');
+  const resetBtn = $('#rate-modal-reset');
+  const saveBtn = $('#rate-modal-save');
+
+  closeBtn?.addEventListener('click', closeRateModal);
+  overlay?.addEventListener('click', closeRateModal);
+
+  // Sync inputs
+  inputT2S?.addEventListener('input', () => {
+    if (isUpdatingRateInputs) return;
+    const t2sVal = parseRateInput(inputT2S.value);
+    isUpdatingRateInputs = true;
+    if (t2sVal > 0) {
+      const s2tVal = 1 / t2sVal;
+      inputS2T.value = formatRateInput(s2tVal);
+      updateRateModalPreview(s2tVal);
+    } else {
+      inputS2T.value = '';
+      updateRateModalPreview(0);
+    }
+    isUpdatingRateInputs = false;
+  });
+
+  inputS2T?.addEventListener('input', () => {
+    if (isUpdatingRateInputs) return;
+    const s2tVal = parseRateInput(inputS2T.value);
+    isUpdatingRateInputs = true;
+    if (s2tVal > 0) {
+      const t2sVal = 1 / s2tVal;
+      inputT2S.value = formatRateInput(t2sVal);
+      updateRateModalPreview(s2tVal);
+    } else {
+      inputT2S.value = '';
+      updateRateModalPreview(0);
+    }
+    isUpdatingRateInputs = false;
+  });
+
+  // Enter key submits modal
+  const handleKeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveBtn?.click();
+    } else if (e.key === 'Escape') {
+      closeRateModal();
+    }
+  };
+  inputT2S?.addEventListener('keydown', handleKeydown);
+  inputS2T?.addEventListener('keydown', handleKeydown);
+
+  // Use market button
+  useMarketBtn?.addEventListener('click', () => {
+    if (!activeRateCode) return;
+    const marketS2T = state.rates ? state.rates[activeRateCode] : null;
+    if (!marketS2T) return;
+    const marketT2S = 1 / marketS2T;
+    isUpdatingRateInputs = true;
+    inputS2T.value = formatRateInput(marketS2T);
+    inputT2S.value = formatRateInput(marketT2S);
+    isUpdatingRateInputs = false;
+    updateRateModalPreview(marketS2T);
+  });
+
+  // Reset button
+  resetBtn?.addEventListener('click', () => {
+    if (activeRateCode) {
+      resetCustomRate(activeRateCode);
+    }
+    closeRateModal();
+  });
+
+  // Save button
+  saveBtn?.addEventListener('click', () => {
+    if (!activeRateCode) return;
+    const s2tVal = parseRateInput(inputS2T.value);
+    if (s2tVal <= 0) {
+      showToast(t('toastInvalidRate'));
+      return;
+    }
+    setCustomRate(activeRateCode, s2tVal);
+    closeRateModal();
+  });
 }
 
 // ============ SETTINGS MODAL ============
@@ -1683,11 +1989,15 @@ function initEventListeners() {
     renderSourcePickerList(e.target.value);
   });
 
+  // Custom rate modal
+  initRateModal();
+
   // Keyboard: Escape closes modals or exits reorder mode
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if ($('#settings-modal') && !$('#settings-modal').classList.contains('hidden')) closeSettings();
       if ($('#source-picker-modal') && !$('#source-picker-modal').classList.contains('hidden')) closeSourcePicker();
+      if ($('#rate-modal') && !$('#rate-modal').classList.contains('hidden')) closeRateModal();
       if (isReordering) cancelReorder();
     }
   });

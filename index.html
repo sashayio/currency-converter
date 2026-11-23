@@ -188,6 +188,77 @@
     </div>
   </div>
 
+  <!-- ===== CUSTOM RATE MODAL ===== -->
+  <div id="rate-modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="rate-modal-title">Курс обмена</h2>
+        <button id="rate-modal-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="rate-modal-pair">
+          <div class="rate-modal-pair-flags">
+            <span id="rate-modal-src-flag" class="currency-flag"></span>
+            <span class="rate-pair-arrow">⇄</span>
+            <span id="rate-modal-tgt-flag" class="currency-flag"></span>
+          </div>
+          <div class="rate-modal-pair-info">
+            <div id="rate-modal-pair-codes" class="rate-pair-codes">RUB → USD</div>
+            <div id="rate-modal-pair-names" class="rate-pair-names">Российский рубль → Доллар США</div>
+          </div>
+        </div>
+
+        <div class="rate-inputs-container">
+          <!-- Field 1: Target to Source (e.g. 1 USD = 96.00 RUB) -->
+          <div class="rate-field">
+            <label id="rate-label-target-to-source" class="rate-field-label" for="rate-input-t2s">
+              1 USD =
+            </label>
+            <div class="rate-input-box">
+              <input type="text" id="rate-input-t2s" inputmode="decimal" autocomplete="off" placeholder="0.00">
+              <span id="rate-unit-t2s" class="rate-input-unit">RUB</span>
+            </div>
+          </div>
+
+          <!-- Field 2: Source to Target (e.g. 1 RUB = 0.0104 USD) -->
+          <div class="rate-field">
+            <label id="rate-label-source-to-target" class="rate-field-label" for="rate-input-s2t">
+              1 RUB =
+            </label>
+            <div class="rate-input-box">
+              <input type="text" id="rate-input-s2t" inputmode="decimal" autocomplete="off" placeholder="0.00">
+              <span id="rate-unit-s2t" class="rate-input-unit">USD</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market rate hint + button to apply market rate -->
+        <div class="rate-market-bar">
+          <div class="rate-market-text">
+            <span class="rate-market-caption" id="rate-market-caption">Рыночный курс:</span>
+            <span class="rate-market-num" id="rate-market-num">1 USD = 92.50 RUB</span>
+          </div>
+          <button type="button" id="rate-use-market-btn" class="rate-market-btn">Взять рыночный</button>
+        </div>
+
+        <!-- Live Conversion Preview -->
+        <div class="rate-preview-card">
+          <div class="rate-preview-title" id="rate-preview-title">Расчет для текущей суммы:</div>
+          <div class="rate-preview-row">
+            <span id="rate-preview-src" class="rate-preview-src">1 000 RUB</span>
+            <span class="rate-preview-arrow">=</span>
+            <span id="rate-preview-val" class="rate-preview-val">10.42 USD</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer rate-modal-actions">
+        <button type="button" id="rate-modal-reset" class="btn-modal-secondary">Сбросить</button>
+        <button type="button" id="rate-modal-save" class="btn-primary">Применить</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast notification -->
   <div id="toast" class="toast hidden"></div>
 
