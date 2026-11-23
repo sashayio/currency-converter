@@ -13,14 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,20 +23,18 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.worldprices.converter.R
 import com.worldprices.converter.data.model.ThemeMode
+import com.worldprices.converter.ui.utils.AppStrings
 
 @Composable
 fun SettingsSheet(
@@ -52,6 +45,7 @@ fun SettingsSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val isRu = currentLanguage == "ru"
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -67,7 +61,7 @@ fun SettingsSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(id = R.string.settings),
+                        text = AppStrings.settings(isRu),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -81,7 +75,7 @@ fun SettingsSheet(
 
                 // Section: Language
                 Text(
-                    text = stringResource(id = R.string.language),
+                    text = AppStrings.language(isRu),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -91,7 +85,6 @@ fun SettingsSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    val isRu = currentLanguage == "ru"
                     val isEn = currentLanguage == "en"
 
                     Box(
@@ -137,7 +130,7 @@ fun SettingsSheet(
 
                 // Section: Theme
                 Text(
-                    text = stringResource(id = R.string.toggle_theme),
+                    text = AppStrings.toggleTheme(isRu),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -153,7 +146,7 @@ fun SettingsSheet(
                         ThemeMode.SYSTEM to ("⚙️ Авто" to "⚙️ System")
                     ).forEach { (mode, titles) ->
                         val isSelected = currentThemeMode == mode
-                        val title = if (currentLanguage == "ru") titles.first else titles.second
+                        val title = if (isRu) titles.first else titles.second
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -194,7 +187,7 @@ fun SettingsSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = stringResource(id = R.string.buy_coffee),
+                        text = AppStrings.buyCoffee(isRu),
                         fontWeight = FontWeight.SemiBold
                     )
                 }

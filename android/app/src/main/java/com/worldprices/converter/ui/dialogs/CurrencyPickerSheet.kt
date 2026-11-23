@@ -49,6 +49,8 @@ import com.worldprices.converter.data.model.CurrencyCategory
 import com.worldprices.converter.data.model.CurrencyRegistry
 import com.worldprices.converter.ui.components.CurrencyFlag
 
+import com.worldprices.converter.ui.utils.AppStrings
+
 @Composable
 fun CurrencyPickerSheet(
     title: String,
@@ -63,10 +65,10 @@ fun CurrencyPickerSheet(
     var selectedCategoryIndex by remember { mutableStateOf(0) }
 
     val categories = listOf(
-        CurrencyCategory.POPULAR to stringResource(id = R.string.cat_popular),
-        CurrencyCategory.CIS to stringResource(id = R.string.cat_cis),
-        CurrencyCategory.FIAT to stringResource(id = R.string.cat_fiat),
-        CurrencyCategory.CRYPTO to stringResource(id = R.string.cat_crypto)
+        CurrencyCategory.POPULAR to AppStrings.catPopular(isRussian),
+        CurrencyCategory.CIS to AppStrings.catCis(isRussian),
+        CurrencyCategory.FIAT to AppStrings.catFiat(isRussian),
+        CurrencyCategory.CRYPTO to AppStrings.catCrypto(isRussian)
     )
 
     val all = CurrencyRegistry.getAll()
@@ -111,7 +113,7 @@ fun CurrencyPickerSheet(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(stringResource(id = R.string.search_hint)) },
+                    placeholder = { Text(AppStrings.searchHint(isRussian)) },
                     leadingIcon = {
                         Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
                     },

@@ -26,6 +26,7 @@ data class MainUiState(
     val isOffline: Boolean = false,
     val lastUpdatedDate: String = "",
     val hasSeenOnboarding: Boolean = false,
+    val isPreferencesLoaded: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val language: String = "ru",
     val editingTargetCurrency: Currency? = null,
@@ -81,6 +82,7 @@ class MainViewModel(
                         targetCurrencies = targets,
                         customRates = prefs.customRates,
                         hasSeenOnboarding = prefs.hasSeenOnboarding,
+                        isPreferencesLoaded = true,
                         themeMode = prefs.themeMode,
                         language = prefs.language
                     )

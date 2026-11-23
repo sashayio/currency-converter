@@ -39,7 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.worldprices.converter.R
+import com.worldprices.converter.ui.utils.AppStrings
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -69,8 +69,8 @@ fun OnboardingScreen(
                 .fillMaxWidth()
         ) { page ->
             when (page) {
-                0 -> OnboardingSlideOne()
-                1 -> OnboardingSlideTwo()
+                0 -> OnboardingSlideOne(isRussian = isRussian)
+                1 -> OnboardingSlideTwo(isRussian = isRussian)
                 2 -> OnboardingSlideThree(
                     selectedSource = selectedSource,
                     selectedTargets = selectedTargets,
@@ -142,7 +142,7 @@ fun OnboardingScreen(
                         }
                     ) {
                         Text(
-                            text = if (isRussian) "Пропустить" else "Skip",
+                            text = AppStrings.skip(isRussian),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -156,7 +156,7 @@ fun OnboardingScreen(
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         Text(
-                            text = stringResource(id = R.string.next),
+                            text = AppStrings.next(isRussian),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -178,7 +178,7 @@ fun OnboardingScreen(
                         .height(54.dp)
                 ) {
                     Text(
-                        text = if (isRussian) "Начать (${selectedTargets.size}) 🚀" else "Get started (${selectedTargets.size}) 🚀",
+                        text = AppStrings.getStarted(isRussian, selectedTargets.size),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )

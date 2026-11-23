@@ -37,11 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.worldprices.converter.R
 import com.worldprices.converter.data.model.CurrencyRegistry
 import com.worldprices.converter.data.model.ThemeMode
 import com.worldprices.converter.ui.components.AmountInputField
@@ -50,12 +48,14 @@ import com.worldprices.converter.ui.components.CurrencyCard
 import com.worldprices.converter.ui.dialogs.CurrencyPickerSheet
 import com.worldprices.converter.ui.dialogs.CustomRateDialog
 import com.worldprices.converter.ui.dialogs.SettingsSheet
+import com.worldprices.converter.ui.utils.AppStrings
 import com.worldprices.converter.ui.utils.ShareHelper
 
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isRussian = uiState.isRussian
 
     Column(
         modifier = Modifier
@@ -68,6 +68,7 @@ fun MainScreen(viewModel: MainViewModel) {
         AppHeader(
             isRefreshing = uiState.isLoading,
             isDarkTheme = uiState.themeMode == ThemeMode.DARK,
+            isRussian = isRussian,
             onRefresh = { viewModel.loadRates(forceRefresh = true) },
             onToggleTheme = { viewModel.toggleTheme() },
             onShare = {
@@ -77,7 +78,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     amount = uiState.amountValue,
                     targets = uiState.targetCurrencies,
                     effectiveRates = uiState.effectiveRatesMap,
-                    isRussian = uiState.isRussian
+                    isRussian = isRussian
                 )
             },
             onOpenSettings = { viewModel.setSettingsOpen(true) }
@@ -102,7 +103,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = stringResource(id = R.string.rates_offline, uiState.lastUpdatedDate),
+                    text = AppStrings.ratesOffline(isRussian, uiState.lastUpdatedDate),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -130,13 +131,13 @@ fun MainScreen(viewModel: MainViewModel) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(id = R.string.rates_failed),
+                        text = AppStrings.ratesFailed(isRussian),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
                 Text(
-                    text = if (uiState.isRussian) "Повторить" else "Retry",
+                    text = AppStrings.retry(isRussian),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -173,7 +174,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     amount = uiState.amountValue,
                     rate = rate,
                     isCustomRate = isCustom,
-                    isRussian = uiState.isRussian,
+                    isRussian = isRussian,
                     onEditRate = { viewModel.openCustomRateDialog(target) },
                     onRemove = { viewModel.removeTargetCurrency(target.code) },
                     onMoveUp = { viewModel.moveTargetUp(index) },
@@ -195,7 +196,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (uiState.isRussian) "+ Добавить валюту" else "+ Add currency",
+                        text = AppStrings.addCurrency(isRussian),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -222,10 +223,8 @@ fun MainScreen(viewModel: MainViewModel) {
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "☕", fontSize = 16.sp)
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = stringResource(id = R.string.buy_coffee),
+                            text = AppStrings.buyCoffee(isRussian),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.primary
@@ -236,7 +235,7 @@ fun MainScreen(viewModel: MainViewModel) {
 
                     if (uiState.lastUpdatedDate.isNotBlank()) {
                         Text(
-                            text = stringResource(id = R.string.rates_updated, uiState.lastUpdatedDate),
+                            text = AppStrings.ratesUpdated(isRussian, uiState.lastUpdatedDate),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -255,7 +254,7 @@ fun MainScreen(viewModel: MainViewModel) {
             marketRate = uiState.getMarketRate(target.code),
             currentAmount = uiState.amountValue,
             isCustom = uiState.isCustomRate(target.code),
-            isRussian = uiState.isRussian,
+            isRussian = isRussian,
             onDismiss = { viewModel.closeCustomRateDialog() },
             onApply = { newRate -> viewModel.setCustomRate(target.code, newRate) },
             onReset = { viewModel.resetCustomRate(target.code) }
@@ -265,8 +264,8 @@ fun MainScreen(viewModel: MainViewModel) {
     // Modal: Source Currency Picker
     if (uiState.isPickingSource) {
         CurrencyPickerSheet(
-            title = stringResource(id = R.string.source_currency),
-            isRussian = uiState.isRussian,
+            title = AppStrings.sourceCurrency(isRussian),
+            isRussian = isRussian,
             selectedCodes = setOf(uiState.sourceCurrency.code.lowercase()),
             multiSelect = false,
             onDismiss = { viewModel.setPickingSource(false) },
@@ -279,8 +278,8 @@ fun MainScreen(viewModel: MainViewModel) {
     // Modal: Target Currencies Picker
     if (uiState.isPickingTargets) {
         CurrencyPickerSheet(
-            title = stringResource(id = R.string.target_currencies),
-            isRussian = uiState.isRussian,
+            title = AppStrings.targetCurrencies(isRussian),
+            isRussian = isRussian,
             selectedCodes = uiState.targetCurrencies.map { it.code.lowercase() }.toSet(),
             multiSelect = true,
             onDismiss = { viewModel.setPickingTargets(false) },

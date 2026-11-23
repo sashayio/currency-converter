@@ -39,10 +39,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worldprices.converter.R
 
+import com.worldprices.converter.ui.utils.AppStrings
+
 @Composable
 fun AppHeader(
     isRefreshing: Boolean,
     isDarkTheme: Boolean,
+    isRussian: Boolean,
     onRefresh: () -> Unit,
     onToggleTheme: () -> Unit,
     onShare: () -> Unit,
@@ -80,7 +83,7 @@ fun AppHeader(
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = stringResource(id = R.string.app_name),
+                text = AppStrings.headerTitle(isRussian),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -91,7 +94,7 @@ fun AppHeader(
             IconButton(onClick = onRefresh, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(id = R.string.refresh_rates),
+                    contentDescription = AppStrings.refreshRates(isRussian),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.rotate(rotation)
                 )
@@ -100,7 +103,7 @@ fun AppHeader(
             IconButton(onClick = onToggleTheme, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                    contentDescription = stringResource(id = R.string.toggle_theme),
+                    contentDescription = AppStrings.toggleTheme(isRussian),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -108,7 +111,7 @@ fun AppHeader(
             IconButton(onClick = onShare, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = Icons.Default.Share,
-                    contentDescription = stringResource(id = R.string.share_summary),
+                    contentDescription = AppStrings.shareSummary(isRussian),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -116,7 +119,7 @@ fun AppHeader(
             IconButton(onClick = onOpenSettings, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = stringResource(id = R.string.settings),
+                    contentDescription = AppStrings.settings(isRussian),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

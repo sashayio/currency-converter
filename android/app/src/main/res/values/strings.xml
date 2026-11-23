@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">World Prices</string>
+    <string name="app_name">Currency Converter</string>
     <string name="app_title">Currency Converter</string>
     <string name="app_subtitle">Currency &amp; Crypto Converter</string>
     <string name="search_currency">Search currency or crypto...</string>

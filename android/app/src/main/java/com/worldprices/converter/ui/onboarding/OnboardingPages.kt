@@ -36,22 +36,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.worldprices.converter.R
-import com.worldprices.converter.data.model.Currency
 import com.worldprices.converter.data.model.CurrencyRegistry
 import com.worldprices.converter.ui.components.CurrencyFlag
 import com.worldprices.converter.ui.theme.AccentGold
+import com.worldprices.converter.ui.utils.AppStrings
 import kotlin.math.cos
 import kotlin.math.sin
 
 @Composable
-fun OnboardingSlideOne() {
+fun OnboardingSlideOne(isRussian: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.95f,
@@ -151,7 +149,7 @@ fun OnboardingSlideOne() {
         Spacer(modifier = Modifier.height(36.dp))
 
         Text(
-            text = stringResource(id = R.string.onboarding_title_1),
+            text = AppStrings.onboardingTitle1(isRussian),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -162,7 +160,7 @@ fun OnboardingSlideOne() {
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = stringResource(id = R.string.onboarding_desc_1),
+            text = AppStrings.onboardingDesc1(isRussian),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -172,7 +170,7 @@ fun OnboardingSlideOne() {
 }
 
 @Composable
-fun OnboardingSlideTwo() {
+fun OnboardingSlideTwo(isRussian: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "slide2")
     val badgeShimmer by infiniteTransition.animateFloat(
         initialValue = 0.85f,
@@ -229,7 +227,7 @@ fun OnboardingSlideTwo() {
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = stringResource(id = R.string.custom_rate_badge),
+                                        text = AppStrings.customRateBadge(isRussian),
                                         color = AccentGold,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
@@ -265,7 +263,7 @@ fun OnboardingSlideTwo() {
                     Text(text = "✈️", fontSize = 13.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Автономный расчет в поездках",
+                        text = AppStrings.offlineTravelHint(isRussian),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -276,7 +274,7 @@ fun OnboardingSlideTwo() {
         Spacer(modifier = Modifier.height(36.dp))
 
         Text(
-            text = stringResource(id = R.string.onboarding_title_2),
+            text = AppStrings.onboardingTitle2(isRussian),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -287,7 +285,7 @@ fun OnboardingSlideTwo() {
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = stringResource(id = R.string.onboarding_desc_2),
+            text = AppStrings.onboardingDesc2(isRussian),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -318,7 +316,7 @@ fun OnboardingSlideThree(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = stringResource(id = R.string.onboarding_title_3),
+            text = AppStrings.onboardingTitle3(isRussian),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -328,7 +326,7 @@ fun OnboardingSlideThree(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = stringResource(id = R.string.onboarding_desc_3),
+            text = AppStrings.onboardingDesc3(isRussian),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -338,7 +336,7 @@ fun OnboardingSlideThree(
 
         // Source currency chips
         Text(
-            text = stringResource(id = R.string.source_currency),
+            text = AppStrings.sourceCurrency(isRussian),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -372,7 +370,7 @@ fun OnboardingSlideThree(
 
         // Target currencies chips
         Text(
-            text = stringResource(id = R.string.target_currencies),
+            text = AppStrings.targetCurrencies(isRussian),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,

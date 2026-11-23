@@ -44,6 +44,8 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
+import com.worldprices.converter.ui.utils.AppStrings
+
 @Composable
 fun CustomRateDialog(
     sourceCurrency: Currency,
@@ -107,7 +109,7 @@ fun CustomRateDialog(
             Column(modifier = Modifier.padding(20.dp)) {
                 // Header
                 Text(
-                    text = stringResource(id = R.string.custom_rate_title),
+                    text = AppStrings.customRateTitle(isRussian),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -190,7 +192,7 @@ fun CustomRateDialog(
                     val marketT2S = if (marketRate > 0) format6.format(1.0 / marketRate) else ""
                     Column {
                         Text(
-                            text = stringResource(id = R.string.market_rate_label),
+                            text = AppStrings.marketRate(isRussian),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -209,7 +211,7 @@ fun CustomRateDialog(
                             }
                         }
                     ) {
-                        Text(stringResource(id = R.string.use_market_btn))
+                        Text(AppStrings.useMarket(isRussian))
                     }
                 }
 
@@ -225,7 +227,7 @@ fun CustomRateDialog(
                 ) {
                     Column {
                         Text(
-                            text = stringResource(id = R.string.rate_preview_title),
+                            text = AppStrings.calculationForAmount(isRussian),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -253,7 +255,7 @@ fun CustomRateDialog(
                             },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text(stringResource(id = R.string.reset))
+                            Text(AppStrings.reset(isRussian))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                     }
@@ -262,14 +264,14 @@ fun CustomRateDialog(
                         onClick = {
                             val finalRate = sourceToTargetText.toDoubleOrNull()
                             if (finalRate == null || finalRate <= 0.0) {
-                                errorMessage = if (isRussian) "Введите корректное число > 0" else "Please enter a valid number > 0"
+                                errorMessage = AppStrings.invalidNumberError(isRussian)
                             } else {
                                 onApply(finalRate)
                                 onDismiss()
                             }
                         }
                     ) {
-                        Text(stringResource(id = R.string.apply))
+                        Text(AppStrings.apply(isRussian))
                     }
                 }
             }

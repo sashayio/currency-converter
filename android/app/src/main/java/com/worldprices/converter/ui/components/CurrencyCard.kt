@@ -46,6 +46,8 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
+import com.worldprices.converter.ui.utils.AppStrings
+
 @Composable
 fun CurrencyCard(
     currency: Currency,
@@ -130,7 +132,7 @@ fun CurrencyCard(
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = stringResource(id = R.string.custom_rate_badge),
+                                        text = AppStrings.customRateBadge(isRussian),
                                         color = AccentGold,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold
@@ -197,7 +199,7 @@ fun CurrencyCard(
                 IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(id = R.string.delete),
+                        contentDescription = AppStrings.delete(isRussian),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
