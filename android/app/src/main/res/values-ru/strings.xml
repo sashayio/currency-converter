@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">World Prices</string>
+    <string name="app_title">Конвертер валют</string>
+    <string name="app_subtitle">Конвертер валют и криптовалют</string>
+    <string name="search_currency">Поиск валюты или крипты...</string>
+    <string name="search_hint">Поиск...</string>
+    <string name="next">Далее →</string>
+    <string name="get_started">Начать 🚀</string>
+    <string name="refresh_rates">Обновить курсы</string>
+    <string name="toggle_theme">Сменить тему</string>
+    <string name="share_summary">Поделиться расчетом</string>
+    <string name="settings">Настройки</string>
+    <string name="language">Язык интерфейса</string>
+    <string name="source_currency">Исходная валюта</string>
+    <string name="target_currencies">Целевые валюты</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отменить</string>
+    <string name="reorder_info">Зажмите и перетащите карточки</string>
+    <string name="delete">Удалить</string>
+    <string name="loading_rates">Загрузка курсов...</string>
+    <string name="rates_updated">Курсы обновлены: %1$s</string>
+    <string name="rates_offline">Курсы на %1$s (Офлайн)</string>
+    <string name="rates_failed">Не удалось загрузить курсы</string>
+    <string name="buy_coffee">Купить автору кофе ☕</string>
+    <string name="cat_popular">Популярные</string>
+    <string name="cat_cis">СНГ и соседи</string>
+    <string name="cat_fiat">Другие валюты</string>
+    <string name="cat_crypto">Криптовалюты</string>
+    <string name="custom_rate_title">Свой курс обмена</string>
+    <string name="custom_rate_badge">Свой</string>
+    <string name="market_rate_label">Рыночный курс:</string>
+    <string name="use_market_btn">Взять рыночный</string>
+    <string name="rate_preview_title">Расчет для текущей суммы:</string>
+    <string name="apply">Применить</string>
+    <string name="reset">Сбросить</string>
+    <string name="invalid_rate_error">Введите корректное положительное число</string>
+
+    <!-- Onboarding Strings -->
+    <string name="onboarding_title_1">Все валюты и крипта</string>
+    <string name="onboarding_desc_1">Мгновенный расчет между 50+ мировыми валютами и популярными криптоактивами по живым курсам.</string>
+    <string name="onboarding_title_2">Свои курсы и офлайн</string>
+    <string name="onboarding_desc_2">Задавайте свои курсы обмена, меняйте порядок карточек и считайте без интернета в поездках.</string>
+    <string name="onboarding_title_3">Быстрый старт</string>
+    <string name="onboarding_desc_3">Выберите основную валюту и добавьте несколько валют для быстрого доступа.</string>
+</resources>
