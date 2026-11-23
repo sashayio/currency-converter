@@ -1,8 +1,8 @@
-# World Prices - Currency & Crypto Converter
+# Currency Converter - Currency & Crypto Converter
 
 A clean, fast, and responsive web converter for world fiat currencies and cryptocurrencies, featuring live exchange rates and PNG export.
 
-**Live Demo:** [https://sashayio.github.io/world-prices/](https://sashayio.github.io/world-prices/)
+**Live Demo:** [https://sashayio.github.io/currency-converter/](https://sashayio.github.io/currency-converter/)
 
 ---
 
@@ -62,11 +62,11 @@ Then open `http://localhost:8000` in your browser.
 
 <br>
 
-# World Prices - Конвертер валют и криптовалют
+# Currency Converter - Конвертер валют и криптовалют
 
 Удобный, быстрый и адаптивный веб-конвертер мировых валют и криптовалют с актуальными курсами и экспортом в PNG.
 
-**Демо онлайн:** [https://sashayio.github.io/world-prices/](https://sashayio.github.io/world-prices/)
+**Демо онлайн:** [https://sashayio.github.io/currency-converter/](https://sashayio.github.io/currency-converter/)
 
 ### Возможности
 
