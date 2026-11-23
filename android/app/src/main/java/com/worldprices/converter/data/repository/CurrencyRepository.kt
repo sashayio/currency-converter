@@ -79,11 +79,27 @@ class CurrencyRepository(
         val diskCache = preferencesDataStore.getCachedRates()
         if (diskCache != null) {
             val (cachedBase, cachedRates, time) = diskCache
+            val reqBase = baseCode.lowercase()
+            val effectiveRates: Map<String, Double> = if (cachedBase.equals(reqBase, ignoreCase = true)) {
+                cachedRates
+            } else {
+                // Compute cross-rates if baseToNewBase exists in cached rates
+                val baseInCached = cachedRates[reqBase]
+                if (baseInCached != null && baseInCached > 0.0) {
+                    val convertedMap = cachedRates.mapValues { (_, rate) -> rate / baseInCached }.toMutableMap()
+                    convertedMap[cachedBase.lowercase()] = 1.0 / baseInCached
+                    convertedMap[reqBase] = 1.0
+                    convertedMap
+                } else {
+                    cachedRates
+                }
+            }
+
             val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
             val formattedDate = dateFormat.format(Date(time))
             val offlineRates = RatesData(
-                baseCode = cachedBase,
-                rates = cachedRates,
+                baseCode = reqBase,
+                rates = effectiveRates,
                 timestamp = time,
                 isOffline = true,
                 formattedDate = formattedDate

@@ -77,7 +77,7 @@ fun OnboardingSlideOne() {
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterAlignment.apply { },
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         // Animated Center Graphic with Orbiting Coins

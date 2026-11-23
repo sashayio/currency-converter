@@ -262,7 +262,7 @@ fun CustomRateDialog(
                         onClick = {
                             val finalRate = sourceToTargetText.toDoubleOrNull()
                             if (finalRate == null || finalRate <= 0.0) {
-                                errorMessage = "Введите корректное число > 0"
+                                errorMessage = if (isRussian) "Введите корректное число > 0" else "Please enter a valid number > 0"
                             } else {
                                 onApply(finalRate)
                                 onDismiss()

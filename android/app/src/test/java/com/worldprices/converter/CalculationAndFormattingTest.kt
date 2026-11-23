@@ -37,4 +37,25 @@ class CalculationAndFormattingTest {
         val backToUsdInRub = 1.0 / rubInUsd
         assertEquals(96.0, backToUsdInRub, 0.00001)
     }
+
+    @Test
+    fun testOfflineCrossRateCalculation() {
+        // Cached rates with base RUB: 1 RUB = 0.01 USD, 1 RUB = 0.009 EUR
+        val cachedBase = "rub"
+        val cachedRates = mapOf("usd" to 0.01, "eur" to 0.009, "rub" to 1.0)
+
+        // User switches base to USD offline
+        val newBase = "usd"
+        val baseInCached = cachedRates[newBase]!!
+        val crossRates = cachedRates.mapValues { (_, rate) -> rate / baseInCached }.toMutableMap()
+        crossRates[cachedBase] = 1.0 / baseInCached
+        crossRates[newBase] = 1.0
+
+        // 1 USD = 100 RUB
+        assertEquals(100.0, crossRates["rub"]!!, 0.0001)
+        // 1 USD = 0.9 EUR
+        assertEquals(0.9, crossRates["eur"]!!, 0.0001)
+        // 1 USD = 1.0 USD
+        assertEquals(1.0, crossRates["usd"]!!, 0.0001)
+    }
 }

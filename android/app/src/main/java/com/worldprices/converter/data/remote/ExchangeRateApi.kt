@@ -26,16 +26,17 @@ class ExchangeRateApi(
                 .header("User-Agent", "WorldPricesAndroid/1.0")
                 .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("HTTP error: ${response.code}"))
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("HTTP error: ${response.code}"))
+                }
+
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val parsed = json.decodeFromString<OpenExchangeRatesResponse>(body)
+
+                val lowercaseRates = parsed.rates.mapKeys { it.key.lowercase() }
+                Result.success(lowercaseRates)
             }
-
-            val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-            val parsed = json.decodeFromString<OpenExchangeRatesResponse>(body)
-
-            val lowercaseRates = parsed.rates.mapKeys { it.key.lowercase() }
-            Result.success(lowercaseRates)
         } catch (e: Exception) {
             Result.failure(e)
         }

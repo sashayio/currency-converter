@@ -49,20 +49,17 @@ fun AppHeader(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val rotation by if (isRefreshing) {
-        val infiniteTransition = rememberInfiniteTransition(label = "refresh")
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(800, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "spin"
-        )
-    } else {
-        androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "refresh")
+    val animatedRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "spin"
+    )
+    val rotation = if (isRefreshing) animatedRotation else 0f
 
     Row(
         modifier = modifier

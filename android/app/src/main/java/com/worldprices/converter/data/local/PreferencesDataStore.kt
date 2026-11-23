@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.worldprices.converter.data.model.ThemeMode
 import com.worldprices.converter.data.model.UserPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -134,20 +135,15 @@ class PreferencesDataStore(private val context: Context) {
     }
 
     suspend fun getCachedRates(): Triple<String, Map<String, Double>, Long>? {
-        var result: Triple<String, Map<String, Double>, Long>? = null
-        context.dataStore.edit { prefs ->
-            val base = prefs[KEY_CACHED_BASE]
-            val ratesJson = prefs[KEY_CACHED_RATES]
-            val time = prefs[KEY_CACHED_TIME]
-            if (base != null && ratesJson != null && time != null) {
-                try {
-                    val rates = json.decodeFromString<Map<String, Double>>(ratesJson)
-                    result = Triple(base, rates, time)
-                } catch (e: Exception) {
-                    result = null
-                }
-            }
+        val prefs = context.dataStore.data.firstOrNull() ?: return null
+        val base = prefs[KEY_CACHED_BASE] ?: return null
+        val ratesJson = prefs[KEY_CACHED_RATES] ?: return null
+        val time = prefs[KEY_CACHED_TIME] ?: return null
+        return try {
+            val rates = json.decodeFromString<Map<String, Double>>(ratesJson)
+            Triple(base, rates, time)
+        } catch (e: Exception) {
+            null
         }
-        return result
     }
 }

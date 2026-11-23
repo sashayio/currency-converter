@@ -30,28 +30,29 @@ class BinanceApi(
                 .header("User-Agent", "WorldPricesAndroid/1.0")
                 .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("HTTP error: ${response.code}"))
-            }
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("HTTP error: ${response.code}"))
+                }
 
-            val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
-            val tickers = json.decodeFromString<List<BinancePriceTicker>>(body)
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val tickers = json.decodeFromString<List<BinancePriceTicker>>(body)
 
-            val prices = mutableMapOf<String, Double>()
-            // 1 USDT = 1 USD
-            prices["usdt"] = 1.0
+                val prices = mutableMapOf<String, Double>()
+                // 1 USDT = 1 USD
+                prices["usdt"] = 1.0
 
-            for (ticker in tickers) {
-                if (ticker.symbol in TRACKED_SYMBOLS) {
-                    val coin = ticker.symbol.removeSuffix("USDT").lowercase()
-                    val price = ticker.price.toDoubleOrNull()
-                    if (price != null && price > 0.0) {
-                        prices[coin] = price
+                for (ticker in tickers) {
+                    if (ticker.symbol in TRACKED_SYMBOLS) {
+                        val coin = ticker.symbol.removeSuffix("USDT").lowercase()
+                        val price = ticker.price.toDoubleOrNull()
+                        if (price != null && price > 0.0) {
+                            prices[coin] = price
+                        }
                     }
                 }
+                Result.success(prices)
             }
-            Result.success(prices)
         } catch (e: Exception) {
             Result.failure(e)
         }

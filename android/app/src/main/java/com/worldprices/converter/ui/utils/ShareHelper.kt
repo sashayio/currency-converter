@@ -34,6 +34,7 @@ object ShareHelper {
             FileOutputStream(imageFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
+            bitmap.recycle()
 
             val contentUri = FileProvider.getUriForFile(
                 context,
@@ -41,10 +42,11 @@ object ShareHelper {
                 imageFile
             )
 
+            val displayAmount = if (amount % 1.0 == 0.0) amount.toInt().toString() else amount.toString()
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, contentUri)
-                putExtra(Intent.EXTRA_TEXT, "${amount.toInt()} ${sourceCurrency.code.uppercase()} — World Prices")
+                putExtra(Intent.EXTRA_TEXT, "$displayAmount ${sourceCurrency.code.uppercase()} — World Prices")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
