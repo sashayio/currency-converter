@@ -61,7 +61,8 @@ class PreferencesDataStore(private val context: Context) {
         val hasSeen = prefs[KEY_ONBOARDING_SEEN] ?: false
         val themeStr = prefs[KEY_THEME] ?: ThemeMode.SYSTEM.name
         val theme = try { ThemeMode.valueOf(themeStr) } catch (e: Exception) { ThemeMode.SYSTEM }
-        val lang = prefs[KEY_LANGUAGE] ?: "ru"
+        val systemDefaultLang = if (java.util.Locale.getDefault().language.equals("ru", ignoreCase = true)) "ru" else "en"
+        val lang = prefs[KEY_LANGUAGE] ?: systemDefaultLang
 
         UserPreferences(
             sourceCurrency = source,

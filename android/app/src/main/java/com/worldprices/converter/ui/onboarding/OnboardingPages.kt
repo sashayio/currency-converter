@@ -4,8 +4,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -353,11 +355,17 @@ fun OnboardingSlideThree(
             quickSources.forEach { code ->
                 val currency = CurrencyRegistry.getByCode(code) ?: return@forEach
                 val isSelected = selectedSource.equals(code, ignoreCase = true)
+                val chipScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.05f else 1f,
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 500f),
+                    label = "src_chip_scale"
+                )
                 FilterChip(
                     selected = isSelected,
                     onClick = { onSelectSource(code) },
                     label = { Text(code.uppercase(), fontWeight = FontWeight.Bold) },
                     leadingIcon = { CurrencyFlag(currency = currency, size = 18.dp) },
+                    modifier = Modifier.scale(chipScale),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = Color.White
@@ -388,11 +396,17 @@ fun OnboardingSlideThree(
                 if (code.equals(selectedSource, ignoreCase = true)) return@forEach
                 val currency = CurrencyRegistry.getByCode(code) ?: return@forEach
                 val isSelected = selectedTargets.contains(code)
+                val chipScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.04f else 1f,
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 500f),
+                    label = "tgt_chip_scale"
+                )
                 FilterChip(
                     selected = isSelected,
                     onClick = { onToggleTarget(code) },
                     label = { Text(code.uppercase()) },
                     leadingIcon = { CurrencyFlag(currency = currency, size = 18.dp) },
+                    modifier = Modifier.scale(chipScale),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
                         selectedLabelColor = Color.White

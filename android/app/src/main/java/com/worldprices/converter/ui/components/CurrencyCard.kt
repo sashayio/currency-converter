@@ -2,6 +2,8 @@ package com.worldprices.converter.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,10 +19,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -57,6 +64,7 @@ fun CurrencyCard(
     isCustomRate: Boolean,
     isRussian: Boolean,
     onEditRate: () -> Unit,
+    onSwapSource: () -> Unit,
     onRemove: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
@@ -64,6 +72,8 @@ fun CurrencyCard(
     canMoveDown: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
     val convertedValue = amount * rate
 
     val symbols = DecimalFormatSymbols(Locale.US).apply {
@@ -88,7 +98,7 @@ fun CurrencyCard(
     }
 
     val borderColor by animateColorAsState(
-        targetValue = if (isCustomRate) AccentGold.copy(alpha = 0.5f) else Color.Transparent,
+        targetValue = if (isCustomRate) AccentGold.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
         label = "border"
     )
 
@@ -99,10 +109,14 @@ fun CurrencyCard(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .border(width = if (isCustomRate) 1.5.dp else 0.dp, color = borderColor, shape = RoundedCornerShape(20.dp))
+            .border(width = if (isCustomRate) 1.5.dp else 1.dp, color = borderColor, shape = RoundedCornerShape(20.dp))
             .clickable(onClick = onEditRate)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .animateContentSize(tween(durationMillis = 200))
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -150,10 +164,24 @@ fun CurrencyCard(
                     }
                 }
 
-                // Right: Calculated Converted Amount
-                Column(horizontalAlignment = Alignment.End) {
+                // Right: Calculated Converted Amount (tap to copy)
+                val formattedAmount = valueFormatter.format(convertedValue)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            clipboardManager.setText(AnnotatedString(formattedAmount))
+                            Toast.makeText(
+                                context,
+                                AppStrings.copiedToClipboard(isRussian, formattedAmount),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
                     Text(
-                        text = "${valueFormatter.format(convertedValue)} ${currency.symbol}",
+                        text = "$formattedAmount ${currency.symbol}",
                         style = MaterialTheme.typography.headlineMedium,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
@@ -168,14 +196,22 @@ fun CurrencyCard(
                 }
             }
 
-            // Bottom toolbar: Reorder & Delete
+            // Bottom toolbar: Swap, Reorder & Delete
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 6.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onSwapSource, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = AppStrings.swapCurrency(isRussian),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 if (canMoveUp) {
                     IconButton(onClick = onMoveUp, modifier = Modifier.size(28.dp)) {
                         Icon(

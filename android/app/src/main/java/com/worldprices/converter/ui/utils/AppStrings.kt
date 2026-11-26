@@ -52,10 +52,13 @@ object AppStrings {
         if (isRussian) "Не удалось загрузить курсы" else "Failed to load rates"
 
     fun addCurrency(isRussian: Boolean): String =
-        if (isRussian) "+ Добавить валюту" else "+ Add currency"
+        if (isRussian) "Добавить валюту" else "Add currency"
 
     fun delete(isRussian: Boolean): String =
         if (isRussian) "Удалить" else "Delete"
+
+    fun cancel(isRussian: Boolean): String =
+        if (isRussian) "Отмена" else "Cancel"
 
     fun searchHint(isRussian: Boolean): String =
         if (isRussian) "Поиск..." else "Search..."
@@ -119,4 +122,71 @@ object AppStrings {
 
     fun invalidNumberError(isRussian: Boolean): String =
         if (isRussian) "Введите корректное число > 0" else "Please enter a valid number > 0"
+
+    // Scanner Strings
+    fun scanCurrency(isRussian: Boolean): String =
+        if (isRussian) "Сканер ценников" else "Price Scanner"
+
+    fun scanHint(isRussian: Boolean): String =
+        if (isRussian) "Наведите камеру на ценник или сумму" else "Point camera at a price tag"
+
+    fun scanDetected(isRussian: Boolean): String =
+        if (isRussian) "Распознано" else "Detected"
+
+    fun scanWaiting(isRussian: Boolean): String =
+        if (isRussian) "Поиск цены..." else "Scanning for price..."
+
+    fun scanFreeze(isRussian: Boolean): String =
+        if (isRussian) "Зафиксировать" else "Freeze"
+
+    fun scanResume(isRussian: Boolean): String =
+        if (isRussian) "Возобновить" else "Resume"
+
+    fun scanApply(isRussian: Boolean): String =
+        if (isRussian) "В конвертер" else "To Converter"
+
+    fun scanCameraPermissionTitle(isRussian: Boolean): String =
+        if (isRussian) "Доступ к камере" else "Camera Permission"
+
+    fun scanCameraPermissionDesc(isRussian: Boolean): String =
+        if (isRussian) "Для распознавания ценников и купюр в реальном времени необходим доступ к камере." else "Camera access is needed to scan prices and currencies in real time."
+
+    fun scanGrantPermission(isRussian: Boolean): String =
+        if (isRussian) "Разрешить камеру" else "Grant Permission"
+
+    fun scanTorch(isRussian: Boolean): String =
+        if (isRussian) "Фонарик" else "Flashlight"
+
+    fun scanTargetListTitle(isRussian: Boolean): String =
+        if (isRussian) "Выбранные валюты" else "Selected Currencies"
+
+    fun scanBaseCurrency(isRussian: Boolean): String =
+        if (isRussian) "Валюта ценника" else "Price Currency"
+
+    fun scanNoTargets(isRussian: Boolean): String =
+        if (isRussian) "Нет выбранных валют" else "No target currencies selected"
+
+    fun copiedToClipboard(isRussian: Boolean, value: String): String =
+        if (isRussian) "Скопировано: $value" else "Copied: $value"
+
+    fun swapCurrency(isRussian: Boolean): String =
+        if (isRussian) "Сделать исходной" else "Make source"
+
+    fun presetDefault(isRussian: Boolean): String =
+        if (isRussian) "⭐ База" else "⭐ Base"
+
+    fun presetTravel(isRussian: Boolean): String =
+        if (isRussian) "✈️ Поездка" else "✈️ Travel"
+
+    fun presetCrypto(isRussian: Boolean): String =
+        if (isRussian) "🪙 Крипта" else "🪙 Crypto"
+
+    fun scanAddToCart(isRussian: Boolean): String =
+        if (isRussian) "+ В сумму" else "+ Add"
+
+    fun scanCartClear(isRussian: Boolean): String =
+        if (isRussian) "Очистить" else "Clear"
+
+    fun scanCartItems(isRussian: Boolean, count: Int): String =
+        if (isRussian) "Чек ($count)" else "Cart ($count)"
 }

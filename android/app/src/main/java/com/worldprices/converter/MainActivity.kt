@@ -3,6 +3,7 @@ package com.worldprices.converter
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -62,7 +63,8 @@ class MainActivity : ComponentActivity() {
 
             CompositionLocalProvider(
                 LocalConfiguration provides localizedConfig,
-                LocalContext provides localizedContext
+                LocalContext provides localizedContext,
+                LocalActivityResultRegistryOwner provides this
             ) {
                 WorldPricesTheme(themeMode = uiState.themeMode) {
                     Crossfade(
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
                             !hasSeenOnboarding -> {
                                 OnboardingScreen(
                                     isRussian = isRussian,
+                                    onToggleLanguage = { viewModel.setLanguage(it) },
                                     onFinish = { source, targets ->
                                         viewModel.completeOnboarding(source, targets)
                                     }

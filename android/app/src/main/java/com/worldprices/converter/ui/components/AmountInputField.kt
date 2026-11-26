@@ -1,8 +1,17 @@
 package com.worldprices.converter.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,11 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,20 +42,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worldprices.converter.data.model.Currency
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 @Composable
 fun AmountInputField(
     sourceCurrency: Currency,
     amountText: String,
+    evaluatedValue: Double = 0.0,
+    isExpressionActive: Boolean = false,
     onAmountChange: (String) -> Unit,
     onSourceClick: () -> Unit,
+    onScanClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(
@@ -57,7 +73,7 @@ fun AmountInputField(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable(onClick = onSourceClick)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -80,46 +96,77 @@ fun AmountInputField(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Amount input
-            BasicTextField(
-                value = amountText,
-                onValueChange = { input ->
-                    val clean = input.replace(',', '.')
-                    if (clean.isEmpty() || clean.matches(Regex("^\\d*\\.?\\d*$"))) {
-                        onAmountChange(clean)
-                    }
-                },
+            // Amount + Expression input
+            Column(
                 modifier = Modifier.weight(1f),
-                textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.End
-                ),
-                singleLine = true,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Done
-                ),
-                decorationBox = { innerTextField ->
-                    Box(
-                        contentAlignment = Alignment.CenterEnd,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (amountText.isEmpty()) {
-                            Text(
-                                text = "0",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.End
-                            )
+                horizontalAlignment = Alignment.End
+            ) {
+                BasicTextField(
+                    value = amountText,
+                    onValueChange = { input ->
+                        val clean = input.replace(',', '.')
+                        if (clean.isEmpty() || clean.all { it in '0'..'9' || it in ".+-*/() " }) {
+                            onAmountChange(clean)
                         }
-                        innerTextField()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = if (amountText.length > 10) 22.sp else 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.End
+                    ),
+                    singleLine = true,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Done
+                    ),
+                    decorationBox = { innerTextField ->
+                        Box(
+                            contentAlignment = Alignment.CenterEnd,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (amountText.isEmpty()) {
+                                Text(
+                                    text = "0",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+
+                AnimatedVisibility(
+                    visible = isExpressionActive,
+                    enter = fadeIn(tween(180)) + expandVertically(tween(180)),
+                    exit = fadeOut(tween(140)) + shrinkVertically(tween(140))
+                ) {
+                    val fmt = DecimalFormat("#,##0.##", DecimalFormatSymbols(Locale.US).apply {
+                        groupingSeparator = ' '
+                        decimalSeparator = '.'
+                    })
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text(
+                            text = "= ${fmt.format(evaluatedValue)}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
                     }
                 }
-            )
+            }
 
             if (amountText.isNotEmpty()) {
                 IconButton(
@@ -131,6 +178,21 @@ fun AmountInputField(
                         contentDescription = "Clear",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            if (onScanClick != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = onScanClick,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DocumentScanner,
+                        contentDescription = "Scan price",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

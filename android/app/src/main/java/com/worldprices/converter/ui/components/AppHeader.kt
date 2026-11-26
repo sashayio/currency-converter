@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worldprices.converter.R
@@ -48,7 +50,7 @@ fun AppHeader(
     isRussian: Boolean,
     onRefresh: () -> Unit,
     onToggleTheme: () -> Unit,
-    onShare: () -> Unit,
+    onOpenScanner: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,7 +73,12 @@ fun AppHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
+        ) {
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -85,8 +92,11 @@ fun AppHeader(
             Text(
                 text = AppStrings.headerTitle(isRussian),
                 style = MaterialTheme.typography.titleLarge,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -108,11 +118,11 @@ fun AppHeader(
                 )
             }
 
-            IconButton(onClick = onShare, modifier = Modifier.size(38.dp)) {
+            IconButton(onClick = onOpenScanner, modifier = Modifier.size(38.dp)) {
                 Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = AppStrings.shareSummary(isRussian),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    imageVector = Icons.Default.DocumentScanner,
+                    contentDescription = AppStrings.scanCurrency(isRussian),
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
 

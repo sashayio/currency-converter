@@ -8,18 +8,22 @@ import com.worldprices.converter.data.model.CurrencyRegistry
 import com.worldprices.converter.data.model.ThemeMode
 import com.worldprices.converter.data.model.UserPreferences
 import com.worldprices.converter.data.repository.CurrencyRepository
+import com.worldprices.converter.ui.utils.AmountExpressionEvaluator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class MainUiState(
     val sourceCurrency: Currency = CurrencyRegistry.defaultSource,
     val targetCurrencies: List<Currency> = CurrencyRegistry.defaultTargets,
     val amountText: String = "1000",
     val amountValue: Double = 1000.0,
+    val isExpressionActive: Boolean = false,
+    val feePercent: Double = 0.0,
     val marketRates: Map<String, Double> = emptyMap(),
     val customRates: Map<String, Double> = emptyMap(),
     val isLoading: Boolean = false,
@@ -28,14 +32,16 @@ data class MainUiState(
     val hasSeenOnboarding: Boolean = false,
     val isPreferencesLoaded: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val language: String = "ru",
+    val language: String = if (Locale.getDefault().language.equals("ru", ignoreCase = true)) "ru" else "en",
     val editingTargetCurrency: Currency? = null,
     val isPickingSource: Boolean = false,
     val isPickingTargets: Boolean = false,
     val isSettingsOpen: Boolean = false,
+    val isScannerOpen: Boolean = false,
     val errorMessage: String? = null
 ) {
     val isRussian: Boolean get() = language == "ru"
+    val effectiveAmountValue: Double get() = amountValue * (1.0 + feePercent / 100.0)
 
     fun getEffectiveRate(targetCode: String): Double {
         val pairKey = "${sourceCurrency.code.lowercase()}_${targetCode.lowercase()}"
@@ -121,8 +127,44 @@ class MainViewModel(
 
     fun setAmountText(text: String) {
         val clean = text.replace(',', '.')
-        val parsed = clean.toDoubleOrNull() ?: 0.0
-        _uiState.update { it.copy(amountText = clean, amountValue = parsed) }
+        val evaluated = AmountExpressionEvaluator.evaluate(clean)
+        _uiState.update { current ->
+            current.copy(
+                amountText = clean,
+                amountValue = evaluated?.value ?: current.amountValue,
+                isExpressionActive = evaluated?.isExpression == true
+            )
+        }
+    }
+
+    fun setFeePercent(percent: Double) {
+        _uiState.update { it.copy(feePercent = percent) }
+    }
+
+    fun applyPreset(codes: List<String>) {
+        val currentSource = _uiState.value.sourceCurrency.code.lowercase()
+        val filtered = codes.map { it.lowercase() }.filter { it != currentSource }
+        if (filtered.isEmpty()) return
+        viewModelScope.launch {
+            repository.setTargetCurrencies(filtered)
+        }
+    }
+
+    fun swapWithSource(targetCode: String) {
+        val newSource = targetCode.lowercase()
+        val oldSource = _uiState.value.sourceCurrency.code.lowercase()
+        if (newSource == oldSource) return
+
+        val updatedTargets = _uiState.value.targetCurrencies
+            .map { it.code.lowercase() }
+            .map { if (it == newSource) oldSource else it }
+            .let { list -> if (list.contains(oldSource)) list else listOf(oldSource) + list }
+
+        viewModelScope.launch {
+            repository.setTargetCurrencies(updatedTargets)
+            repository.setSourceCurrency(newSource)
+            loadRates(newSource, forceRefresh = false)
+        }
     }
 
     fun setSourceCurrency(code: String) {
@@ -212,12 +254,8 @@ class MainViewModel(
         }
     }
 
-    fun toggleTheme() {
-        val next = when (_uiState.value.themeMode) {
-            ThemeMode.LIGHT -> ThemeMode.DARK
-            ThemeMode.DARK -> ThemeMode.LIGHT
-            ThemeMode.SYSTEM -> ThemeMode.DARK
-        }
+    fun toggleTheme(isCurrentlyDark: Boolean) {
+        val next = if (isCurrentlyDark) ThemeMode.LIGHT else ThemeMode.DARK
         setThemeMode(next)
     }
 
@@ -245,6 +283,26 @@ class MainViewModel(
 
     fun setSettingsOpen(open: Boolean) {
         _uiState.update { it.copy(isSettingsOpen = open) }
+    }
+
+    fun setScannerOpen(open: Boolean) {
+        _uiState.update { it.copy(isScannerOpen = open) }
+    }
+
+    fun applyScannedAmount(amount: Double, sourceCode: String? = null) {
+        val displayAmount = if (amount % 1.0 == 0.0) {
+            amount.toLong().toString()
+        } else {
+            "%.2f".format(Locale.US, amount).trimEnd('0').trimEnd('.')
+        }
+        setAmountText(displayAmount)
+        if (sourceCode != null && sourceCode.isNotBlank()) {
+            val found = CurrencyRegistry.getByCode(sourceCode)
+            if (found != null && found.code.lowercase() != _uiState.value.sourceCurrency.code.lowercase()) {
+                setSourceCurrency(found.code)
+            }
+        }
+        setScannerOpen(false)
     }
 
     class Factory(private val repository: CurrencyRepository) : ViewModelProvider.Factory {
