@@ -988,6 +988,52 @@ body {
   align-items: center;
 }
 
+.seo-about {
+  margin-top: 16px;
+  max-width: 520px;
+  width: 100%;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.seo-about summary {
+  cursor: pointer;
+  text-align: center;
+  list-style: none;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  transition: opacity var(--transition);
+}
+
+.seo-about summary::-webkit-details-marker {
+  display: none;
+}
+
+.seo-about summary:hover {
+  opacity: 1;
+}
+
+.seo-about-body {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+
+.seo-about-body h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.seo-about-body p + p {
+  margin-top: 6px;
+}
+
 .footer-tip {
   margin-bottom: 12px;
   display: flex;
