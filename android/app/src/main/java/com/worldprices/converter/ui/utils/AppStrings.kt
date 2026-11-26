@@ -165,4 +165,28 @@ object AppStrings {
 
     fun scanNoTargets(isRussian: Boolean): String =
         if (isRussian) "Нет выбранных валют" else "No target currencies selected"
+
+    fun copiedToClipboard(isRussian: Boolean, value: String): String =
+        if (isRussian) "Скопировано: $value" else "Copied: $value"
+
+    fun swapCurrency(isRussian: Boolean): String =
+        if (isRussian) "Сделать исходной" else "Make source"
+
+    fun presetDefault(isRussian: Boolean): String =
+        if (isRussian) "⭐ База" else "⭐ Base"
+
+    fun presetTravel(isRussian: Boolean): String =
+        if (isRussian) "✈️ Поездка" else "✈️ Travel"
+
+    fun presetCrypto(isRussian: Boolean): String =
+        if (isRussian) "🪙 Крипта" else "🪙 Crypto"
+
+    fun scanAddToCart(isRussian: Boolean): String =
+        if (isRussian) "+ В сумму" else "+ Add"
+
+    fun scanCartClear(isRussian: Boolean): String =
+        if (isRussian) "Очистить" else "Clear"
+
+    fun scanCartItems(isRussian: Boolean, count: Int): String =
+        if (isRussian) "Чек ($count)" else "Cart ($count)"
 }

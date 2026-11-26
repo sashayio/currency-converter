@@ -95,6 +95,14 @@ const I18N = {
     toastCustomRateSet: (c) => `✓ Установлен свой курс для ${c.toUpperCase()}`,
     toastCustomRateReset: (c) => `✓ Рыночный курс для ${c.toUpperCase()} восстановлен`,
     toastInvalidRate: '⚠️ Введите корректный курс',
+    swapTitle: 'Сделать исходной валютой',
+    copyTitle: 'Нажмите, чтобы скопировать',
+    toastCopied: (v) => `✓ Скопировано: ${v}`,
+    presetDefault: '⭐ База',
+    presetTravel: '✈️ Поездка',
+    presetCrypto: '🪙 Крипта',
+    toastPresetApplied: (name) => `✓ Набор: ${name}`,
+    amountPlaceholder: '1000 или 100+50',
   },
   en: {
     appTitle: 'Currency converter',
@@ -158,6 +166,14 @@ const I18N = {
     toastCustomRateSet: (c) => `✓ Custom rate set for ${c.toUpperCase()}`,
     toastCustomRateReset: (c) => `✓ Reset to market rate for ${c.toUpperCase()}`,
     toastInvalidRate: '⚠️ Please enter a valid rate',
+    swapTitle: 'Make source currency',
+    copyTitle: 'Click to copy',
+    toastCopied: (v) => `✓ Copied: ${v}`,
+    presetDefault: '⭐ Base',
+    presetTravel: '✈️ Travel',
+    presetCrypto: '🪙 Crypto',
+    toastPresetApplied: (name) => `✓ Preset: ${name}`,
+    amountPlaceholder: '1000 or 100+50',
   }
 };
 
@@ -280,10 +296,17 @@ let state = {
   source:  'rub',
   targets: ['usd', 'eur', 'byn'],
   amount:  1000,
+  feePercent: 0,
   rates:   {},          // { usd: 0.0108, eur: 0.0099, ... }
   customRates: {},      // { 'rub_usd': 0.0104166, ... }
   rateDate: null,
   cacheTime: 0,
+};
+
+const CURRENCY_PRESETS = {
+  default: ['usd', 'eur', 'rub', 'gbp', 'cny'],
+  travel: ['eur', 'usd', 'try', 'thb', 'aed'],
+  crypto: ['usdt', 'btc', 'eth', 'sol', 'ton'],
 };
 
 // ============ DOM REFS ============
@@ -564,6 +587,89 @@ function parseAmountInput(val) {
   return isNaN(num) ? 0 : Math.max(0, num);
 }
 
+/**
+ * Safely evaluate arithmetic expressions (+, -, *, /, parentheses) without eval().
+ * Returns { value, isExpression } or null if invalid.
+ */
+function evaluateAmountExpression(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: 0, isExpression: false };
+
+  const hasOperator = /[+\-*/()]/.test(trimmed.replace(/^-/, ''));
+  if (!hasOperator) {
+    return { value: parseAmountInput(trimmed), isExpression: false };
+  }
+
+  const normalized = trimmed.replace(/[\s\u00A0\u202F]/g, '').replace(/,/g, '.');
+  if (!/^[0-9+\-*/().]+$/.test(normalized)) return null;
+
+  let pos = 0;
+  function peek() { return normalized[pos]; }
+  function consume() { return normalized[pos++]; }
+
+  function parseExpr() {
+    let val = parseTerm();
+    if (val === null) return null;
+    while (peek() === '+' || peek() === '-') {
+      const op = consume();
+      const right = parseTerm();
+      if (right === null) return null;
+      val = op === '+' ? val + right : val - right;
+    }
+    return val;
+  }
+
+  function parseTerm() {
+    let val = parseFactor();
+    if (val === null) return null;
+    while (peek() === '*' || peek() === '/') {
+      const op = consume();
+      const right = parseFactor();
+      if (right === null) return null;
+      if (op === '/') {
+        if (right === 0) return null;
+        val = val / right;
+      } else {
+        val = val * right;
+      }
+    }
+    return val;
+  }
+
+  function parseFactor() {
+    if (peek() === '+') { consume(); return parseFactor(); }
+    if (peek() === '-') {
+      consume();
+      const f = parseFactor();
+      return f === null ? null : -f;
+    }
+    if (peek() === '(') {
+      consume();
+      const val = parseExpr();
+      if (val === null || peek() !== ')') return null;
+      consume();
+      return val;
+    }
+    const start = pos;
+    let dotSeen = false;
+    while (pos < normalized.length && ((normalized[pos] >= '0' && normalized[pos] <= '9') || normalized[pos] === '.')) {
+      if (normalized[pos] === '.') {
+        if (dotSeen) return null;
+        dotSeen = true;
+      }
+      pos++;
+    }
+    if (pos === start) return null;
+    const num = parseFloat(normalized.slice(start, pos));
+    return isNaN(num) ? null : num;
+  }
+
+  const result = parseExpr();
+  if (result === null || pos !== normalized.length || !isFinite(result)) return null;
+  return { value: Math.max(0, result), isExpression: true };
+}
+
 function formatAmountInput(num) {
   if (num === null || num === undefined || isNaN(num)) return '';
   if (num === 0) return '0';
@@ -586,6 +692,7 @@ function saveState() {
     source: state.source,
     targets: state.targets,
     amount: state.amount,
+    feePercent: state.feePercent || 0,
     rates: state.rates,
     customRates: state.customRates || {},
     rateDate: state.rateDate,
@@ -604,6 +711,7 @@ function loadState() {
     if (data.source) state.source = data.source;
     if (Array.isArray(data.targets) && data.targets.length) state.targets = data.targets;
     if (typeof data.amount === 'number') state.amount = data.amount;
+    if (typeof data.feePercent === 'number') state.feePercent = data.feePercent;
     if (data.rates) state.rates = data.rates;
     if (data.customRates && typeof data.customRates === 'object') state.customRates = data.customRates;
     if (data.rateDate) state.rateDate = data.rateDate;
@@ -853,7 +961,28 @@ function resetCustomRate(targetCode) {
 function getConvertedAmount(targetCode) {
   const rate = getEffectiveRate(targetCode);
   if (!rate) return null;
-  return state.amount * rate;
+  const multiplier = 1 + (state.feePercent || 0) / 100;
+  return state.amount * rate * multiplier;
+}
+
+async function swapWithSource(targetCode) {
+  const newSource = targetCode.toLowerCase();
+  const oldSource = state.source.toLowerCase();
+  if (newSource === oldSource) return;
+
+  state.targets = state.targets.map(c => c === newSource ? oldSource : c);
+  if (!state.targets.includes(oldSource)) {
+    state.targets.unshift(oldSource);
+  }
+  state.source = newSource;
+  saveState();
+  updateSourceDisplay();
+  renderConversionCards(true);
+
+  const ok = await fetchRates(state.source, false);
+  renderConversionCards(false);
+  updateLastUpdated();
+  if (!ok) showToast(t('toastRatesError'));
 }
 
 // ============ SETUP SCREEN ============
@@ -1146,6 +1275,16 @@ function applyLanguage(lang) {
     btn.classList.toggle('active', btn.dataset.lang === currentLang);
   });
 
+  // Update quick toolbar presets & input placeholder
+  const elAmountInput = $('#amount-input');
+  if (elAmountInput) elAmountInput.placeholder = t('amountPlaceholder');
+  const elPresetDef = $('#preset-default');
+  if (elPresetDef) elPresetDef.textContent = t('presetDefault');
+  const elPresetTravel = $('#preset-travel');
+  if (elPresetTravel) elPresetTravel.textContent = t('presetTravel');
+  const elPresetCrypto = $('#preset-crypto');
+  if (elPresetCrypto) elPresetCrypto.textContent = t('presetCrypto');
+
   // Re-render conversion cards and input formatting
   updateAmountInput();
   updateLastUpdated();
@@ -1247,7 +1386,7 @@ function renderConversionCards(loading = false) {
         <div class="conv-name">${cur.name}</div>
       </div>
       <div class="conv-right">
-        <div class="conv-amount ${loading ? 'loading' : ''}">${loading ? '...' : formatNumber(amount, code)}</div>
+        <div class="conv-amount ${loading ? 'loading' : 'is-copyable'}" title="${loading ? '' : t('copyTitle')}">${loading ? '...' : formatNumber(amount, code)}</div>
         ${unitRate ? `
           <div class="conv-rate ${isCustom ? 'is-custom' : ''}">
             <button type="button" class="conv-rate-btn ${isCustom ? 'is-custom' : ''}" data-code="${code}" title="${t('editRateTitle')}" draggable="false">
@@ -1258,7 +1397,10 @@ function renderConversionCards(loading = false) {
             ${isCustom ? `<button type="button" class="conv-rate-reset" data-code="${code}" title="${t('resetRateTitle')}" draggable="false">↺</button>` : ''}
           </div>` : ''}
       </div>
-      <button class="conv-delete" title="${t('deleteCurrency')}" data-code="${code}">&times;</button>`;
+      <div class="conv-card-actions">
+        <button type="button" class="conv-swap" title="${t('swapTitle')}" data-code="${code}" draggable="false">⇄</button>
+        <button type="button" class="conv-delete" title="${t('deleteCurrency')}" data-code="${code}">&times;</button>
+      </div>`;
 
     // --- HTML5 Desktop Drag & Drop ---
     card.addEventListener('dragstart', (e) => {
@@ -1365,6 +1507,24 @@ function renderConversionCards(loading = false) {
       e.stopPropagation();
       if (isReordering) return;
       resetCustomRate(code);
+    });
+
+    // Copy amount on click
+    card.querySelector('.conv-amount')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isReordering || loading) return;
+      const text = e.currentTarget.textContent.trim();
+      if (!text || text === '...') return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(t('toastCopied', text))).catch(() => {});
+      }
+    });
+
+    // Swap source currency in 1 tap
+    card.querySelector('.conv-swap')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isReordering) return;
+      swapWithSource(code);
     });
 
     // Delete handler
@@ -1876,11 +2036,21 @@ async function exportToPNG() {
 // ============ AMOUNT INPUT HANDLING ============
 function initAmountInput() {
   const input = $('#amount-input');
+  const calcHint = $('#amount-calc-hint');
   if (!input) return;
 
+  function updateCalcHint(evalResult) {
+    if (!calcHint) return;
+    if (evalResult && evalResult.isExpression) {
+      calcHint.textContent = `= ${formatAmountInput(evalResult.value)}`;
+      calcHint.classList.remove('hidden');
+    } else {
+      calcHint.classList.add('hidden');
+    }
+  }
+
   input.addEventListener('input', () => {
-    // Sanitize: allow digits, dot, comma, spaces, and minus
-    const clean = input.value.replace(/[^\d.,\s\-]/g, '');
+    const clean = input.value.replace(/[^\d.,\s+\-*/()]/g, '');
     if (clean !== input.value) {
       const pos = Math.max(0, input.selectionStart - (input.value.length - clean.length));
       input.value = clean;
@@ -1890,35 +2060,38 @@ function initAmountInput() {
     const trimmed = input.value.trim();
     if (trimmed === '' || trimmed === '.' || trimmed === ',' || trimmed === '-') {
       state.amount = 0;
+      updateCalcHint(null);
       saveState();
       renderConversionCards(false);
       return;
     }
 
-    const num = parseAmountInput(input.value);
-    state.amount = num;
-    saveState();
-
-    // Re-render conversion cards with the new amount in real time.
-    // Crucially: We do NOT reformat or overwrite input.value here while typing.
-    // This eliminates:
-    // 1) The comma bug in ENG mode where 1,000 was converted to 1.000 and blocked typing > 1000.
-    // 2) Erasing decimal separators (dots or commas) and trailing zeros when typing fractions (e.g. 10.5).
-    // 3) Cursor jumping and backspace trapping.
-    renderConversionCards(false);
+    const evalResult = evaluateAmountExpression(input.value);
+    if (evalResult) {
+      state.amount = evalResult.value;
+      updateCalcHint(evalResult);
+      saveState();
+      renderConversionCards(false);
+    } else {
+      updateCalcHint(null);
+    }
   });
 
   input.addEventListener('blur', () => {
     const trimmed = input.value.trim();
+    const evalResult = evaluateAmountExpression(trimmed);
+    if (evalResult) {
+      state.amount = evalResult.value;
+    }
     if (trimmed === '' || isNaN(state.amount) || state.amount === 0) {
       state.amount = 0;
       input.value = '0';
-      saveState();
-      renderConversionCards(false);
     } else {
-      // Normalize cleanly on blur (e.g. cleans up pasted "1,000,000" or trailing dot "100." -> "100")
       input.value = formatAmountInput(state.amount);
     }
+    updateCalcHint(null);
+    saveState();
+    renderConversionCards(false);
   });
 
   input.addEventListener('keydown', (e) => {
@@ -1928,8 +2101,33 @@ function initAmountInput() {
   });
 
   input.addEventListener('focus', () => {
-    // Select all on focus for easy replacement
     setTimeout(() => input.select(), 50);
+  });
+}
+
+function initQuickToolbar() {
+  const feeChips = $$('#fee-chips .m3-chip');
+  feeChips.forEach(chip => {
+    const feeVal = parseFloat(chip.dataset.fee);
+    chip.classList.toggle('active', feeVal === (state.feePercent || 0));
+    chip.addEventListener('click', () => {
+      state.feePercent = feeVal;
+      feeChips.forEach(c => c.classList.toggle('active', parseFloat(c.dataset.fee) === feeVal));
+      saveState();
+      renderConversionCards(false);
+    });
+  });
+
+  $$('#preset-chips .preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const key = chip.dataset.preset;
+      const list = CURRENCY_PRESETS[key];
+      if (!list) return;
+      state.targets = list.filter(c => c !== state.source.toLowerCase());
+      saveState();
+      renderConversionCards(false);
+      showToast(t('toastPresetApplied', chip.textContent.trim()));
+    });
   });
 }
 
@@ -2023,7 +2221,12 @@ async function init() {
   }
 
   initAmountInput();
+  initQuickToolbar();
   initEventListeners();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 }
 
 // Expose on window for convenience

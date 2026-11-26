@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.worldprices.converter.R
@@ -50,7 +51,6 @@ fun AppHeader(
     onRefresh: () -> Unit,
     onToggleTheme: () -> Unit,
     onOpenScanner: () -> Unit,
-    onShare: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -73,7 +73,12 @@ fun AppHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
+        ) {
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -87,8 +92,11 @@ fun AppHeader(
             Text(
                 text = AppStrings.headerTitle(isRussian),
                 style = MaterialTheme.typography.titleLarge,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -115,14 +123,6 @@ fun AppHeader(
                     imageVector = Icons.Default.DocumentScanner,
                     contentDescription = AppStrings.scanCurrency(isRussian),
                     tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            IconButton(onClick = onShare, modifier = Modifier.size(38.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = AppStrings.shareSummary(isRussian),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

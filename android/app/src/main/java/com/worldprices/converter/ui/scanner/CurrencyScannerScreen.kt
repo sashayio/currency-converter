@@ -15,12 +15,13 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
@@ -67,15 +69,26 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -228,14 +241,20 @@ private fun LiveScannerContent(
 
     var detectedAmount by remember { mutableFloatStateOf(0f) }
     var detectedCurrencyCode by remember { mutableStateOf<String?>(null) }
+    var cartItems by remember { mutableStateOf<List<Double>>(emptyList()) }
     var isFrozen by remember { mutableStateOf(false) }
     var isTorchEnabled by remember { mutableStateOf(false) }
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
     var isFullListView by remember { mutableStateOf(false) }
 
-    // Stabilization state to prevent erratic number flickering
+    // Stabilization & haptic state
     var candidatePrice by remember { mutableFloatStateOf(0f) }
     var candidateStreak by remember { mutableIntStateOf(0) }
+    var missedFrames by remember { mutableIntStateOf(0) }
+    var lastHapticTimeMs by remember { mutableLongStateOf(0L) }
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val currentIsFullListView by androidx.compose.runtime.rememberUpdatedState(isFullListView)
 
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val textRecognizer = remember {
@@ -371,15 +390,61 @@ private fun LiveScannerContent(
                                             .addOnSuccessListener { visionText ->
                                                 if (isFrozen) return@addOnSuccessListener
                                                 try {
-                                                    // 1. Collect lines inside the central viewfinder box with their bounding boxes
+                                                    // Exact visual cutout coordinates in PreviewView screen pixels
+                                                    val viewW = previewView.width.toFloat()
+                                                    val viewH = previewView.height.toFloat()
+                                                    val boxW = minOf(viewW * 0.86f, with(density) { 330.dp.toPx() })
+                                                    val boxH = with(density) { 195.dp.toPx() }
+                                                    val bottomShift = with(density) { (if (currentIsFullListView) 300.dp else 220.dp).toPx() }
+                                                    val cutLeft = (viewW - boxW) / 2f
+                                                    val cutTop = ((viewH - bottomShift) - boxH) / 2f
+                                                    val cutRight = cutLeft + boxW
+                                                    val cutBottom = cutTop + boxH
+
+                                                    // 1. Collect ONLY lines whose screen-mapped center is inside the visual cutout box
                                                     val ocrLines = ArrayList<OcrLine>(16)
                                                     for (block in visionText.textBlocks) {
                                                         for (line in block.lines) {
                                                             val box = line.boundingBox ?: continue
-                                                            if (PriceTextParser.isInsideViewfinder(box, frameW, frameH)) {
+                                                            val inside = if (viewW > 0f && viewH > 0f) {
+                                                                PriceTextParser.isInsideScreenCutout(
+                                                                    box = box,
+                                                                    frameWidth = frameW,
+                                                                    frameHeight = frameH,
+                                                                    viewWidth = viewW,
+                                                                    viewHeight = viewH,
+                                                                    cutLeft = cutLeft,
+                                                                    cutTop = cutTop,
+                                                                    cutRight = cutRight,
+                                                                    cutBottom = cutBottom
+                                                                )
+                                                            } else {
+                                                                PriceTextParser.isInsideViewfinder(box, frameW, frameH)
+                                                            }
+                                                            if (inside) {
+                                                                val reconstructedText = buildString {
+                                                                    line.elements.forEachIndexed { elemIdx, element ->
+                                                                        if (elemIdx > 0) append(' ')
+                                                                        val syms = element.symbols
+                                                                        if (syms.isNotEmpty()) {
+                                                                            val ocrSyms = syms.mapNotNull { sym ->
+                                                                                val sb = sym.boundingBox ?: return@mapNotNull null
+                                                                                OcrSymbol(sym.text, sb.left, sb.top, sb.right, sb.bottom)
+                                                                            }
+                                                                            if (ocrSyms.isNotEmpty()) {
+                                                                                append(PriceTextParser.reconstructSuperscriptDecimals(ocrSyms))
+                                                                            } else {
+                                                                                append(element.text)
+                                                                            }
+                                                                        } else {
+                                                                            append(element.text)
+                                                                        }
+                                                                    }
+                                                                }.ifBlank { line.text }
+
                                                                 ocrLines.add(
                                                                     OcrLine(
-                                                                        text = line.text,
+                                                                        text = reconstructedText,
                                                                         left = box.left,
                                                                         top = box.top,
                                                                         right = box.right,
@@ -396,27 +461,52 @@ private fun LiveScannerContent(
                                                     )
 
                                                     if (parsed != null && parsed.amount > 0.0) {
+                                                        missedFrames = 0
                                                         val newAmount = parsed.amount.toFloat()
 
-                                                        // High-confidence or visually dominant detection locks immediately
-                                                        if (parsed.confidence >= 5.0f) {
-                                                            detectedAmount = newAmount
+                                                        fun triggerPriceHapticIfNeeded(prev: Float, next: Float) {
+                                                            val now = System.currentTimeMillis()
+                                                            val changedSignificantly = prev <= 0f ||
+                                                                kotlin.math.abs(next - prev) / prev > 0.05f
+                                                            if (changedSignificantly && now - lastHapticTimeMs > 500L) {
+                                                                lastHapticTimeMs = now
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            }
+                                                        }
+
+                                                        val matchesCurrent = detectedAmount > 0f &&
+                                                            kotlin.math.abs(newAmount - detectedAmount) / detectedAmount < 0.02f
+
+                                                        if (matchesCurrent) {
+                                                            // Already locked on this price: keep steady without jumping
                                                             candidatePrice = newAmount
                                                             candidateStreak = 0
                                                         } else {
-                                                            // Multi-frame consensus for weaker detections
-                                                            val isSame = candidatePrice > 0f &&
-                                                                kotlin.math.abs(newAmount - candidatePrice) / candidatePrice < 0.03f
+                                                            val matchesCandidate = candidatePrice > 0f &&
+                                                                kotlin.math.abs(newAmount - candidatePrice) / candidatePrice < 0.02f
 
-                                                            if (isSame) {
+                                                            if (matchesCandidate) {
                                                                 candidateStreak++
-                                                                if (candidateStreak >= 2) {
-                                                                    detectedAmount = candidatePrice
-                                                                }
+                                                                candidatePrice = newAmount
                                                             } else {
                                                                 candidatePrice = newAmount
                                                                 candidateStreak = 1
                                                             }
+
+                                                            // Require 2 matching frames to lock initially, or 3 to switch from an existing lock
+                                                            val requiredStreak = if (detectedAmount <= 0f) 2 else 3
+                                                            if (candidateStreak >= requiredStreak) {
+                                                                triggerPriceHapticIfNeeded(detectedAmount, newAmount)
+                                                                detectedAmount = newAmount
+                                                                candidateStreak = 0
+                                                            }
+                                                        }
+                                                    } else {
+                                                        missedFrames++
+                                                        if (missedFrames >= 6) {
+                                                            detectedAmount = 0f
+                                                            candidatePrice = 0f
+                                                            candidateStreak = 0
                                                         }
                                                     }
                                                 } catch (e: Throwable) {
@@ -459,18 +549,12 @@ private fun LiveScannerContent(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Semi-transparent overlay
-        ViewfinderOverlay()
-
-        // Viewfinder Center Target Box
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = if (isFullListView) 300.dp else 220.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            ViewfinderLaserBox(isDetected = detectedAmount > 0f)
-        }
+        // Dimmed overlay with completely clear cutout inside the enlarged viewfinder box
+        val bottomPaddingDp = if (isFullListView) 300.dp else 220.dp
+        ViewfinderCutoutOverlay(
+            isDetected = detectedAmount > 0f,
+            bottomOffset = bottomPaddingDp
+        )
 
         // Top App Bar Controls
         Row(
@@ -553,15 +637,81 @@ private fun LiveScannerContent(
                 .fillMaxWidth()
                 .navigationBarsPadding()
         ) {
+            if (cartItems.isNotEmpty()) {
+                val cartTotal = cartItems.sum()
+                val cartFormatted = if (cartTotal % 1.0 == 0.0) {
+                    cartTotal.toInt().toString()
+                } else {
+                    "%.2f".format(Locale.US, cartTotal)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.94f))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${AppStrings.scanCartItems(isRussian, cartItems.size)}: $cartFormatted ${selectedSourceCurrency.code.uppercase()}",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = AppStrings.scanCartClear(isRussian),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { cartItems = emptyList() }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = AppStrings.scanApply(isRussian),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .clickable { onApply(cartTotal, selectedSourceCurrency.code) }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+            }
+
             DetectedPriceBanner(
                 detectedAmount = detectedAmount,
                 sourceCurrency = selectedSourceCurrency,
                 isFrozen = isFrozen,
                 isRussian = isRussian,
                 onToggleFreeze = { isFrozen = !isFrozen },
-                onApply = {
+                onAddToCart = {
                     if (detectedAmount > 0f) {
-                        onApply(detectedAmount.toDouble(), selectedSourceCurrency.code)
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        cartItems = cartItems + detectedAmount.toDouble()
+                    }
+                },
+                onApply = {
+                    val finalAmount = if (cartItems.isNotEmpty() && detectedAmount <= 0f) {
+                        cartItems.sum()
+                    } else {
+                        detectedAmount.toDouble()
+                    }
+                    if (finalAmount > 0.0) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onApply(finalAmount, selectedSourceCurrency.code)
                     }
                 }
             )
@@ -596,52 +746,88 @@ private fun LiveScannerContent(
 }
 
 @Composable
-private fun ViewfinderOverlay() {
-    Box(
+private fun ViewfinderCutoutOverlay(
+    isDetected: Boolean,
+    bottomOffset: androidx.compose.ui.unit.Dp
+) {
+    val density = LocalDensity.current
+    val cornerColor by animateColorAsState(
+        targetValue = if (isDetected) Color(0xFF34D399) else Color.White,
+        animationSpec = tween(durationMillis = 200),
+        label = "viewfinder_corner"
+    )
+
+    Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.25f))
-    )
-}
-
-@Composable
-private fun ViewfinderLaserBox(isDetected: Boolean) {
-    val infiniteTransition = rememberInfiniteTransition(label = "laser")
-    val laserProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "laser_beam"
-    )
-
-    val borderColor = if (isDetected) Color(0xFF10B981) else Color.White.copy(alpha = 0.6f)
-
-    Box(
-        modifier = Modifier
-            .width(280.dp)
-            .height(150.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .border(2.dp, borderColor, RoundedCornerShape(24.dp))
+            .graphicsLayer(alpha = 0.99f)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .padding(top = (laserProgress * 144).dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            if (isDetected) Color(0xFF10B981) else MaterialTheme.colorScheme.primary,
-                            Color.Cyan,
-                            if (isDetected) Color(0xFF10B981) else MaterialTheme.colorScheme.primary,
-                            Color.Transparent
-                        )
-                    )
-                )
+        val boxWidth = minOf(size.width * 0.86f, with(density) { 330.dp.toPx() })
+        val boxHeight = with(density) { 195.dp.toPx() }
+        val bottomShift = with(density) { bottomOffset.toPx() }
+        val cornerRadiusPx = with(density) { 24.dp.toPx() }
+        val strokePx = with(density) { 3.5.dp.toPx() }
+        val bracketLen = with(density) { 28.dp.toPx() }
+
+        val left = (size.width - boxWidth) / 2f
+        val top = ((size.height - bottomShift) - boxHeight) / 2f
+
+        // 1. Subtle dim around the outside
+        drawRect(color = Color.Black.copy(alpha = 0.45f))
+
+        // 2. Completely clear cutout inside the scanner box
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = Offset(left, top),
+            size = Size(boxWidth, boxHeight),
+            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+            blendMode = BlendMode.Clear
+        )
+
+        // 3. Subtle hairline border
+        drawRoundRect(
+            color = cornerColor.copy(alpha = if (isDetected) 0.5f else 0.25f),
+            topLeft = Offset(left, top),
+            size = Size(boxWidth, boxHeight),
+            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+            style = Stroke(width = with(density) { 1.dp.toPx() })
+        )
+
+        // 4. Minimalist Google Lens-style corner brackets
+        val r = cornerRadiusPx
+        val right = left + boxWidth
+        val bottom = top + boxHeight
+
+        val cornersPath = Path().apply {
+            // Top-left
+            moveTo(left, top + r + bracketLen)
+            lineTo(left, top + r)
+            quadraticBezierTo(left, top, left + r, top)
+            lineTo(left + r + bracketLen, top)
+
+            // Top-right
+            moveTo(right - r - bracketLen, top)
+            lineTo(right - r, top)
+            quadraticBezierTo(right, top, right, top + r)
+            lineTo(right, top + r + bracketLen)
+
+            // Bottom-right
+            moveTo(right, bottom - r - bracketLen)
+            lineTo(right, bottom - r)
+            quadraticBezierTo(right, bottom, right - r, bottom)
+            lineTo(right - r - bracketLen, bottom)
+
+            // Bottom-left
+            moveTo(left + r + bracketLen, bottom)
+            lineTo(left + r, bottom)
+            quadraticBezierTo(left, bottom, left, bottom - r)
+            lineTo(left, bottom - r - bracketLen)
+        }
+
+        drawPath(
+            path = cornersPath,
+            color = cornerColor,
+            style = Stroke(width = strokePx, cap = StrokeCap.Round)
         )
     }
 }
@@ -653,6 +839,7 @@ private fun DetectedPriceBanner(
     isFrozen: Boolean,
     isRussian: Boolean,
     onToggleFreeze: () -> Unit,
+    onAddToCart: () -> Unit,
     onApply: () -> Unit
 ) {
     Card(
@@ -665,24 +852,33 @@ private fun DetectedPriceBanner(
             .padding(horizontal = 16.dp)
             .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
+            // Top Row: Detected price / scanning status + state badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(if (isFrozen) AccentGold else Color(0xFF10B981))
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = if (detectedAmount > 0f) {
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(if (isFrozen) AccentGold else Color(0xFF10B981))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AnimatedContent(
+                        targetState = if (detectedAmount > 0f) {
                             val formatted = if (detectedAmount % 1f == 0f) {
                                 detectedAmount.toInt().toString()
                             } else {
@@ -692,38 +888,87 @@ private fun DetectedPriceBanner(
                         } else {
                             AppStrings.scanWaiting(isRussian)
                         },
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = if (isFrozen) AppStrings.scanFreeze(isRussian) else AppStrings.scanDetected(isRussian),
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 11.sp
-                    )
+                        transitionSpec = {
+                            fadeIn(tween(150)) togetherWith fadeOut(tween(120))
+                        },
+                        label = "scanner_price_text"
+                    ) { displayText ->
+                        Text(
+                            text = displayText,
+                            color = Color.White,
+                            fontSize = if (detectedAmount > 0f) 20.sp else 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
+
+                Text(
+                    text = if (isFrozen) AppStrings.scanFreeze(isRussian) else AppStrings.scanDetected(isRussian),
+                    color = if (isFrozen) AccentGold else Color(0xFF34D399),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            if (isFrozen) AccentGold.copy(alpha = 0.16f)
+                            else Color(0xFF10B981).copy(alpha = 0.16f)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Bottom Row: Spacious action bar (+ Add, Freeze/Resume, Apply)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onAddToCart,
+                    enabled = detectedAmount > 0f,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.14f),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color.White.copy(alpha = 0.06f),
+                        disabledContentColor = Color.White.copy(alpha = 0.35f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = AppStrings.scanAddToCart(isRussian),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                }
+
                 IconButton(
                     onClick = onToggleFreeze,
                     modifier = Modifier
                         .size(38.dp)
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(
                             if (isFrozen) AccentGold.copy(alpha = 0.25f)
-                            else Color.White.copy(alpha = 0.1f)
+                            else Color.White.copy(alpha = 0.12f)
                         )
                 ) {
                     Icon(
                         imageVector = if (isFrozen) Icons.Default.PlayArrow else Icons.Default.Pause,
                         contentDescription = if (isFrozen) AppStrings.scanResume(isRussian) else AppStrings.scanFreeze(isRussian),
                         tint = if (isFrozen) AccentGold else Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
 
                 Button(
                     onClick = onApply,
@@ -731,21 +976,24 @@ private fun DetectedPriceBanner(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        disabledContainerColor = Color.White.copy(alpha = 0.15f)
+                        disabledContainerColor = Color.White.copy(alpha = 0.12f)
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier.height(38.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = AppStrings.scanApply(isRussian),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
                     )
                 }
             }

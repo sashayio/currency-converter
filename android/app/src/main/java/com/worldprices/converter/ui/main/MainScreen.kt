@@ -3,8 +3,10 @@ package com.worldprices.converter.ui.main
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,12 +22,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -59,6 +66,12 @@ fun MainScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val isRussian = uiState.isRussian
 
+    val isDarkTheme = when (uiState.themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -69,21 +82,11 @@ fun MainScreen(viewModel: MainViewModel) {
         // App Header
         AppHeader(
             isRefreshing = uiState.isLoading,
-            isDarkTheme = uiState.themeMode == ThemeMode.DARK,
+            isDarkTheme = isDarkTheme,
             isRussian = isRussian,
             onRefresh = { viewModel.loadRates(forceRefresh = true) },
-            onToggleTheme = { viewModel.toggleTheme() },
+            onToggleTheme = { viewModel.toggleTheme(isDarkTheme) },
             onOpenScanner = { viewModel.setScannerOpen(true) },
-            onShare = {
-                ShareHelper.shareConversionSummary(
-                    context = context,
-                    sourceCurrency = uiState.sourceCurrency,
-                    amount = uiState.amountValue,
-                    targets = uiState.targetCurrencies,
-                    effectiveRates = uiState.effectiveRatesMap,
-                    isRussian = isRussian
-                )
-            },
             onOpenSettings = { viewModel.setSettingsOpen(true) }
         )
 
@@ -150,14 +153,52 @@ fun MainScreen(viewModel: MainViewModel) {
         }
 
         // Amount Input Field
-        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
             AmountInputField(
                 sourceCurrency = uiState.sourceCurrency,
                 amountText = uiState.amountText,
+                evaluatedValue = uiState.amountValue,
+                isExpressionActive = uiState.isExpressionActive,
                 onAmountChange = { viewModel.setAmountText(it) },
                 onSourceClick = { viewModel.setPickingSource(true) },
                 onScanClick = { viewModel.setScannerOpen(true) }
             )
+        }
+
+        // Minimalist Google M3 Quick Chips: Fee/Tax + Presets
+        val feeOptions = listOf(0.0 to "+0%", 2.5 to "+2.5%", 7.0 to "+7%", 10.0 to "+10%")
+        val presets = listOf(
+            Triple("default", AppStrings.presetDefault(isRussian), listOf("usd", "eur", "rub", "gbp", "cny")),
+            Triple("travel", AppStrings.presetTravel(isRussian), listOf("eur", "usd", "try", "thb", "aed")),
+            Triple("crypto", AppStrings.presetCrypto(isRussian), listOf("usdt", "btc", "eth", "sol", "ton"))
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp)
+        ) {
+            items(feeOptions) { (feeVal, label) ->
+                val selected = uiState.feePercent == feeVal
+                FilterChip(
+                    selected = selected,
+                    onClick = { viewModel.setFeePercent(feeVal) },
+                    label = { Text(label, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium) },
+                    shape = RoundedCornerShape(999.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+            items(presets) { (_, label, codes) ->
+                AssistChip(
+                    onClick = { viewModel.applyPreset(codes) },
+                    label = { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium) },
+                    shape = RoundedCornerShape(999.dp)
+                )
+            }
         }
 
         // Target Currencies List
@@ -175,16 +216,18 @@ fun MainScreen(viewModel: MainViewModel) {
                 CurrencyCard(
                     currency = target,
                     sourceCurrency = uiState.sourceCurrency,
-                    amount = uiState.amountValue,
+                    amount = uiState.effectiveAmountValue,
                     rate = rate,
                     isCustomRate = isCustom,
                     isRussian = isRussian,
                     onEditRate = { viewModel.openCustomRateDialog(target) },
+                    onSwapSource = { viewModel.swapWithSource(target.code) },
                     onRemove = { viewModel.removeTargetCurrency(target.code) },
                     onMoveUp = { viewModel.moveTargetUp(index) },
                     onMoveDown = { viewModel.moveTargetDown(index) },
                     canMoveUp = index > 0,
-                    canMoveDown = index < uiState.targetCurrencies.lastIndex
+                    canMoveDown = index < uiState.targetCurrencies.lastIndex,
+                    modifier = Modifier.animateItemPlacement(tween(durationMillis = 220))
                 )
             }
 
@@ -298,6 +341,16 @@ fun MainScreen(viewModel: MainViewModel) {
             currentLanguage = uiState.language,
             onThemeChange = { viewModel.setThemeMode(it) },
             onLanguageChange = { viewModel.setLanguage(it) },
+            onShare = {
+                ShareHelper.shareConversionSummary(
+                    context = context,
+                    sourceCurrency = uiState.sourceCurrency,
+                    amount = uiState.effectiveAmountValue,
+                    targets = uiState.targetCurrencies,
+                    effectiveRates = uiState.effectiveRatesMap,
+                    isRussian = isRussian
+                )
+            },
             onDismiss = { viewModel.setSettingsOpen(false) }
         )
     }

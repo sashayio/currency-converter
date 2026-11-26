@@ -2,6 +2,17 @@ package com.worldprices.converter.ui.scanner
 
 import android.graphics.Rect
 
+data class OcrSymbol(
+    val text: String,
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int
+) {
+    val width: Int get() = (right - left).coerceAtLeast(0)
+    val height: Int get() = (bottom - top).coerceAtLeast(0)
+}
+
 data class OcrLine(
     val text: String,
     val left: Int,
@@ -109,15 +120,17 @@ object PriceTextParser {
     }
 
     // Regex for candidate price:
-    // Matches numbers with currency, decimals (.99, ,50), or thousands separators
+    // Matches numbers with currency, decimals (.99, ,50), or thousands separators (space, comma, or dot)
     private val strictPriceRegex = Regex(
-        """(?<!\w)(?:[€$£₽₺₸₴₹¥₩฿₫₾]\s*)?(\d{1,3}(?:[ ,]\d{3})*(?:[.,]\d{1,2}|[.,]-)?|\d+(?:[.,]\d{1,2}|[.,]-)?)(?:\s*[€$£₽₺₸₴₹¥₩฿₫₾a-zA-Zа-яА-Я.]{1,6})?(?!\w)"""
+        """(?<!\w)(?:[€$£₽₺₸₴₹¥₩฿₫₾]\s*)?(\d{1,3}(?:[ .,]\d{3})*(?:[.,]\d{1,2}|[.,]-)?|\d+(?:[.,]\d{1,2}|[.,]-)?)(?:\s*[€$£₽₺₸₴₹¥₩฿₫₾a-zA-Zа-яА-Я.]{1,6})?(?!\w)"""
     )
 
     private val cleanNumberRegex = Regex("""[^0-9., \-]""")
     private val nonDigitRegex = Regex("""\D""")
     private val splitSpaceDecimalRegex = Regex("""^(\d{1,5})\s+(\d{2})$""")
-    private val twoDigitKopeckRegex = Regex("""^\s*(\d{2})\s*(?:[₽рР].*)?$""")
+    private val twoDigitKopeckRegex = Regex("""^\s*[.,]?\s*(\d{2})\s*(?:[₽$€£₺₸₴рР].*)?$""")
+    private val ocrDecimalDotVariantsRegex = Regex("""(\d)\s*[·•٫]\s*(\d)""")
+    private val spacedDecimalRegex = Regex("""(\d)\s+([.,])\s*(\d{1,2})(?!\d)|(\d)([.,])\s+(\d{1,2})(?!\d)""")
 
     private data class SpatialCandidate(
         val amount: Double,
@@ -147,7 +160,7 @@ object PriceTextParser {
         val kopeckLines = mutableListOf<Pair<OcrLine, Pair<Int, String?>>>()
 
         for (line in cleanedLines) {
-            val text = line.text
+            val text = normalizeOcrText(line.text)
             val (detectedCode, hasCurrencyMarker) = detectCurrency(text)
 
             // Reject dates, times, percentages, and cent-based unit prices (e.g. 66.6¢)
@@ -158,17 +171,18 @@ object PriceTextParser {
 
             val hasPriceKeyword = hasPriceKeyword(text)
 
-            // Check if this line could be a standalone 2-digit kopeck/cent block (e.g. "99" or "99₽")
+            // Check if this line could be a standalone 2-digit kopeck/cent block (e.g. "99", ".99", ",99", "99₽")
             val kopMatch = twoDigitKopeckRegex.matchEntire(text)
-            if (kopMatch != null && !text.contains('.') && !text.contains(',')) {
+            if (kopMatch != null) {
                 val kopVal = kopMatch.groupValues[1].toIntOrNull()
                 if (kopVal != null) {
                     kopeckLines.add(line to (kopVal to detectedCode))
                 }
             }
 
-            // Handle "229 99" on a single line (integer + 2-digit kopeck separated by space)
-            val spaceDecMatch = splitSpaceDecimalRegex.matchEntire(text.replace(Regex("""[₽$€£]"""), "").trim())
+            // Handle "229 99" or "99 90." on a single line (integer + 2-digit kopeck separated by space)
+            val spaceDecInput = text.replace(Regex("""[₽$€£]"""), "").trim().trimEnd('.', ',', '-')
+            val spaceDecMatch = splitSpaceDecimalRegex.matchEntire(spaceDecInput)
             if (spaceDecMatch != null) {
                 val mainPart = spaceDecMatch.groupValues[1].toDoubleOrNull()
                 val kopPart = spaceDecMatch.groupValues[2].toDoubleOrNull()
@@ -203,9 +217,8 @@ object PriceTextParser {
                 val amount = sanitizeNumber(cleanedNumberStr) ?: continue
                 if (amount <= 0.0) continue
 
-                val hasDecimal = cleanedNumberStr.contains('.') ||
-                    cleanedNumberStr.contains(',') ||
-                    cleanedNumberStr.endsWith("-")
+                val hasExplicitDecimalDigits = Regex("""[.,]\d+$""").containsMatchIn(cleanedNumberStr)
+                val hasDecimal = hasExplicitDecimalDigits || cleanedNumberStr.endsWith("-")
 
                 // Discard years (2020..2030) without currency/decimal
                 if (!hasCurrencyMarker && amount in 2020.0..2030.0 && !hasDecimal) {
@@ -342,7 +355,8 @@ object PriceTextParser {
         val lines = rawText.lines().map { it.trim() }.filter { it.isNotBlank() }
         val candidates = mutableListOf<ParsedPrice>()
 
-        for (line in lines) {
+        for (rawLine in lines) {
+            val line = normalizeOcrText(rawLine)
             val (detectedCode, hasCurrencyMarker) = detectCurrency(line)
 
             if (datePattern.containsMatchIn(line) && !hasCurrencyMarker) continue
@@ -362,9 +376,8 @@ object PriceTextParser {
                 val amount = sanitizeNumber(cleanedNumberStr) ?: continue
                 if (amount <= 0.0) continue
 
-                val hasDecimal = cleanedNumberStr.contains('.') ||
-                    cleanedNumberStr.contains(',') ||
-                    cleanedNumberStr.endsWith("-")
+                val hasExplicitDecimalDigits = Regex("""[.,]\d+$""").containsMatchIn(cleanedNumberStr)
+                val hasDecimal = hasExplicitDecimalDigits || cleanedNumberStr.endsWith("-")
 
                 if (!hasCurrencyMarker && !hasPriceKeyword && !hasDecimal) {
                     continue
@@ -425,6 +438,35 @@ object PriceTextParser {
     }
 
     /**
+     * Maps an OCR bounding box from camera sensor coordinates (frameWidth x frameHeight)
+     * into PreviewView FILL_CENTER screen coordinates and checks if its center lies
+     * strictly inside the visible viewfinder cutout rectangle.
+     */
+    fun isInsideScreenCutout(
+        box: Rect?,
+        frameWidth: Int,
+        frameHeight: Int,
+        viewWidth: Float,
+        viewHeight: Float,
+        cutLeft: Float,
+        cutTop: Float,
+        cutRight: Float,
+        cutBottom: Float
+    ): Boolean {
+        if (box == null || frameWidth <= 0 || frameHeight <= 0 || viewWidth <= 0f || viewHeight <= 0f) {
+            return false
+        }
+        val scale = maxOf(viewWidth / frameWidth.toFloat(), viewHeight / frameHeight.toFloat())
+        val offsetX = (viewWidth - frameWidth * scale) / 2f
+        val offsetY = (viewHeight - frameHeight * scale) / 2f
+
+        val screenCenterX = box.centerX() * scale + offsetX
+        val screenCenterY = box.centerY() * scale + offsetY
+
+        return screenCenterX in cutLeft..cutRight && screenCenterY in cutTop..cutBottom
+    }
+
+    /**
      * Checks if a bounding box is within the central viewfinder target region.
      * Normalized coordinates (0..1) of the rotated image frame.
      */
@@ -454,8 +496,71 @@ object PriceTextParser {
         return centerX in minX..maxX && centerY in minY..maxY
     }
 
+    /**
+     * Reconstructs missing decimal points in ML Kit symbol runs where the last 2 digits
+     * are superscripted/subscripted (smaller height or raised baseline, e.g. Pyaterochka 99^90)
+     * or separated by a horizontal gap where a bold/square dot was dropped by OCR.
+     */
+    fun reconstructSuperscriptDecimals(symbols: List<OcrSymbol>): String {
+        if (symbols.isEmpty()) return ""
+        val sb = StringBuilder(symbols.size + 4)
+        var i = 0
+        while (i < symbols.size) {
+            val s = symbols[i]
+            if (s.text.length == 1 && s.text[0].isDigit()) {
+                val runStart = i
+                while (i < symbols.size && symbols[i].text.length == 1 && symbols[i].text[0].isDigit()) {
+                    i++
+                }
+                val run = symbols.subList(runStart, i)
+                val prevIsSep = runStart > 0 && symbols[runStart - 1].text in setOf(".", ",")
+                val nextIsSep = i < symbols.size && symbols[i].text in setOf(".", ",")
+
+                if (!prevIsSep && !nextIsSep && run.size in 4..7) {
+                    val splitIdx = run.size - 2
+                    val mainDigits = run.subList(0, splitIdx)
+                    val lastTwo = run.subList(splitIdx, run.size)
+
+                    val mainAvgH = mainDigits.map { it.height }.average().toFloat().coerceAtLeast(1f)
+                    val mainAvgBottom = mainDigits.map { it.bottom }.average().toFloat()
+                    val lastAvgH = lastTwo.map { it.height }.average().toFloat()
+                    val lastAvgBottom = lastTwo.map { it.bottom }.average().toFloat()
+
+                    val gapBeforeLastTwo = (lastTwo.first().left - mainDigits.last().right).toFloat()
+                    val isSmallerSuperscript = lastAvgH <= mainAvgH * 0.75f
+                    val isRaisedBaseline = lastAvgBottom <= mainAvgBottom - mainAvgH * 0.20f
+                    val hasDroppedDotGap = gapBeforeLastTwo >= mainAvgH * 0.22f && lastAvgH <= mainAvgH * 0.90f
+
+                    if (isSmallerSuperscript || isRaisedBaseline || hasDroppedDotGap) {
+                        for (d in mainDigits) sb.append(d.text)
+                        sb.append('.')
+                        for (d in lastTwo) sb.append(d.text)
+                        continue
+                    }
+                }
+                for (d in run) sb.append(d.text)
+            } else {
+                sb.append(s.text)
+                i++
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun normalizeOcrText(raw: String): String {
+        var s = ocrDecimalDotVariantsRegex.replace(raw) { m -> "${m.groupValues[1]}.${m.groupValues[2]}" }
+        s = spacedDecimalRegex.replace(s) { m ->
+            if (m.groupValues[1].isNotEmpty()) {
+                "${m.groupValues[1]}${m.groupValues[2]}${m.groupValues[3]}"
+            } else {
+                "${m.groupValues[4]}${m.groupValues[5]}${m.groupValues[6]}"
+            }
+        }
+        return s
+    }
+
     fun sanitizeNumber(raw: String): Double? {
-        var str = raw.trim().trimEnd('-', '.', ',')
+        var str = normalizeOcrText(raw).trim().trimEnd('-', '.', ',')
         if (str.isEmpty()) return null
 
         try {
@@ -467,16 +572,18 @@ object PriceTextParser {
                 }
             } else if (str.contains(',')) {
                 val commaIndex = str.lastIndexOf(',')
+                val intPart = str.substring(0, commaIndex).replace(" ", "")
                 val digitsAfter = str.length - 1 - commaIndex
-                if (digitsAfter == 3 && !str.substring(0, commaIndex).contains(',')) {
+                if (digitsAfter == 3 && !intPart.contains(',') && intPart != "0") {
                     str = str.replace(",", "").replace(" ", "")
                 } else {
                     str = str.replace(" ", "").replace(',', '.')
                 }
             } else if (str.contains('.')) {
                 val dotIndex = str.lastIndexOf('.')
+                val intPart = str.substring(0, dotIndex).replace(" ", "")
                 val digitsAfter = str.length - 1 - dotIndex
-                if (digitsAfter == 3 && !str.substring(0, dotIndex).contains('.')) {
+                if (digitsAfter == 3 && !intPart.contains('.') && intPart != "0") {
                     str = str.replace(".", "").replace(" ", "")
                 } else {
                     str = str.replace(" ", "")

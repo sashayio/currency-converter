@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
                             !hasSeenOnboarding -> {
                                 OnboardingScreen(
                                     isRussian = isRussian,
+                                    onToggleLanguage = { viewModel.setLanguage(it) },
                                     onFinish = { source, targets ->
                                         viewModel.completeOnboarding(source, targets)
                                     }

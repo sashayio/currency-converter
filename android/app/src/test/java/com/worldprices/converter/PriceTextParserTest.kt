@@ -1,6 +1,7 @@
 package com.worldprices.converter
 
 import com.worldprices.converter.ui.scanner.OcrLine
+import com.worldprices.converter.ui.scanner.OcrSymbol
 import com.worldprices.converter.ui.scanner.PriceTextParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -152,5 +153,70 @@ class PriceTextParserTest {
         val parsed = PriceTextParser.parseSpatial(lines, "RUB")
         assertNotNull(parsed)
         assertEquals(229.99, parsed!!.amount, 0.001)
+    }
+
+    @Test
+    fun testEuropeanThousandsAndCommaDecimalInParse() {
+        val parsed = PriceTextParser.parse("1.250,50 €")
+        assertNotNull(parsed)
+        assertEquals(1250.50, parsed!!.amount, 0.001)
+        assertEquals("EUR", parsed.currencyCode)
+    }
+
+    @Test
+    fun testOcrSpacedDecimalsAndMiddleDot() {
+        val spacedDot = PriceTextParser.parse("12 . 99 $")
+        assertNotNull(spacedDot)
+        assertEquals(12.99, spacedDot!!.amount, 0.001)
+
+        val spacedComma = PriceTextParser.parse("49 , 90 €")
+        assertNotNull(spacedComma)
+        assertEquals(49.90, spacedComma!!.amount, 0.001)
+
+        val middleDot = PriceTextParser.parse("19·50 €")
+        assertNotNull(middleDot)
+        assertEquals(19.50, middleDot!!.amount, 0.001)
+
+        assertEquals(0.995, PriceTextParser.sanitizeNumber("0.995")!!, 0.0001)
+        assertEquals(0.500, PriceTextParser.sanitizeNumber("0,500")!!, 0.0001)
+    }
+
+    @Test
+    fun testSpatialSplitWithLeadingOrTrailingDot() {
+        val lines = listOf(
+            OcrLine("19.", left = 100, top = 100, right = 220, bottom = 200),
+            OcrLine("99", left = 225, top = 105, right = 275, bottom = 145)
+        )
+        val parsed = PriceTextParser.parseSpatial(lines, "USD")
+        assertNotNull(parsed)
+        assertEquals(19.99, parsed!!.amount, 0.001)
+
+        val linesLeading = listOf(
+            OcrLine("19", left = 100, top = 100, right = 220, bottom = 200),
+            OcrLine(".99", left = 225, top = 105, right = 275, bottom = 145)
+        )
+        val parsedLeading = PriceTextParser.parseSpatial(linesLeading, "USD")
+        assertNotNull(parsedLeading)
+        assertEquals(19.99, parsedLeading!!.amount, 0.001)
+    }
+
+    @Test
+    fun testSuperscriptSymbolReconstructionFor9990Tag() {
+        // Simulates Pyaterochka 99^90 read by ML Kit as "9990" with smaller raised "90"
+        val symbols = listOf(
+            OcrSymbol("9", left = 100, top = 100, right = 145, bottom = 200),
+            OcrSymbol("9", left = 148, top = 100, right = 193, bottom = 200),
+            OcrSymbol("9", left = 205, top = 98, right = 230, bottom = 148),
+            OcrSymbol("0", left = 232, top = 98, right = 257, bottom = 148)
+        )
+        val reconstructed = PriceTextParser.reconstructSuperscriptDecimals(symbols)
+        assertEquals("99.90", reconstructed)
+
+        val parsed = PriceTextParser.parseSpatial(
+            listOf(OcrLine(reconstructed, left = 100, top = 98, right = 257, bottom = 200)),
+            "RUB"
+        )
+        assertNotNull(parsed)
+        assertEquals(99.90, parsed!!.amount, 0.001)
     }
 }

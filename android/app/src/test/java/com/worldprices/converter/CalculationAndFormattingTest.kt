@@ -58,4 +58,25 @@ class CalculationAndFormattingTest {
         // 1 USD = 1.0 USD
         assertEquals(1.0, crossRates["usd"]!!, 0.0001)
     }
+
+    @Test
+    fun testExpressionEvaluator() {
+        val simple = com.worldprices.converter.ui.utils.AmountExpressionEvaluator.evaluate("120 + 45")
+        org.junit.Assert.assertNotNull(simple)
+        assertEquals(165.0, simple!!.value, 0.0001)
+        org.junit.Assert.assertTrue(simple.isExpression)
+
+        val precedence = com.worldprices.converter.ui.utils.AmountExpressionEvaluator.evaluate("100 + 50 * 2")
+        assertEquals(200.0, precedence!!.value, 0.0001)
+
+        val parens = com.worldprices.converter.ui.utils.AmountExpressionEvaluator.evaluate("(100 + 50) * 1.1")
+        assertEquals(165.0, parens!!.value, 0.0001)
+
+        val plain = com.worldprices.converter.ui.utils.AmountExpressionEvaluator.evaluate("1000,5")
+        assertEquals(1000.5, plain!!.value, 0.0001)
+        org.junit.Assert.assertFalse(plain.isExpression)
+
+        val divZero = com.worldprices.converter.ui.utils.AmountExpressionEvaluator.evaluate("100/0")
+        org.junit.Assert.assertNull(divZero)
+    }
 }
