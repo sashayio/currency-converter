@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a73e8">
   <title>Currency converter</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -85,7 +87,26 @@
           <span id="source-code" class="currency-code">RUB</span>
           <svg class="chevron" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
         </button>
-        <input type="text" id="amount-input" inputmode="decimal" value="1000" autocomplete="off">
+        <div class="amount-field-box">
+          <input type="text" id="amount-input" inputmode="text" value="1000" autocomplete="off" placeholder="1000 or 100+50">
+          <span id="amount-calc-hint" class="amount-calc-hint hidden"></span>
+        </div>
+      </div>
+
+      <!-- Minimalist Google M3 Quick Toolbar: Fee/Tax + Presets -->
+      <div class="quick-toolbar" id="quick-toolbar">
+        <div class="chip-group" id="fee-chips" role="group" aria-label="Fee or tax">
+          <button type="button" class="m3-chip active" data-fee="0">+0%</button>
+          <button type="button" class="m3-chip" data-fee="2.5">+2.5%</button>
+          <button type="button" class="m3-chip" data-fee="7">+7%</button>
+          <button type="button" class="m3-chip" data-fee="10">+10%</button>
+        </div>
+        <div class="chip-divider"></div>
+        <div class="chip-group" id="preset-chips" role="group" aria-label="Currency presets">
+          <button type="button" class="m3-chip preset-chip" data-preset="default" id="preset-default">⭐ База</button>
+          <button type="button" class="m3-chip preset-chip" data-preset="travel" id="preset-travel">✈️ Поездка</button>
+          <button type="button" class="m3-chip preset-chip" data-preset="crypto" id="preset-crypto">🪙 Крипта</button>
+        </div>
       </div>
     </div>
 

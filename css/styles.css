@@ -7,46 +7,46 @@
 
 :root {
   --font-family: 'Plus Jakarta Sans', 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --bg: #f0f2f5;
+  --bg: #f8f9fa;
   --surface: #ffffff;
-  --surface-hover: #f8f9fb;
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-light: #dbeafe;
-  --text: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --success: #22c55e;
-  --danger: #ef4444;
-  --radius: 14px;
-  --radius-sm: 10px;
-  --radius-xs: 6px;
-  --shadow: 0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.03);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.08);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
+  --surface-hover: #f1f3f4;
+  --primary: #1a73e8;
+  --primary-hover: #1557b0;
+  --primary-light: #e8f0fe;
+  --text: #202124;
+  --text-secondary: #5f6368;
+  --text-muted: #80868b;
+  --border: #dadce0;
+  --border-light: #eef0f2;
+  --success: #1e8e3e;
+  --danger: #d93025;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --shadow: 0 1px 2px rgba(60, 64, 67, 0.06);
+  --shadow-md: 0 2px 6px rgba(60, 64, 67, 0.12), 0 1px 2px rgba(60, 64, 67, 0.06);
+  --shadow-lg: 0 8px 28px rgba(60, 64, 67, 0.16);
   --transition: 200ms cubic-bezier(0.2, 0, 0, 1);
   --max-width: 540px;
   --max-width-desktop: 1140px;
 }
 
-/* ===== DARK THEME (pleasant slate-gray, not harsh black) ===== */
+/* ===== DARK THEME (Google Material 3 Dark) ===== */
 [data-theme="dark"] {
-  --bg: #1c2026;
-  --surface: #242a34;
-  --surface-hover: #2d3542;
-  --primary: #3b82f6;
-  --primary-hover: #60a5fa;
-  --primary-light: rgba(59, 130, 246, 0.22);
-  --text: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border: #333d4e;
-  --border-light: #28303e;
-  --shadow: 0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
-  --shadow-md: 0 4px 14px rgba(0,0,0,.45);
-  --shadow-lg: 0 10px 40px rgba(0,0,0,.6);
+  --bg: #111318;
+  --surface: #1d1f24;
+  --surface-hover: #272a30;
+  --primary: #8ab4f8;
+  --primary-hover: #aecbfa;
+  --primary-light: rgba(138, 180, 248, 0.16);
+  --text: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-muted: #80868b;
+  --border: #3c4043;
+  --border-light: #282a2e;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 3px 10px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 36px rgba(0, 0, 0, 0.55);
 }
 
 [data-theme="dark"] .modal-overlay {
@@ -489,11 +489,21 @@ body {
   flex-shrink: 0;
 }
 
+.amount-field-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-right: 14px;
+}
+
 #amount-input {
   flex: 1;
   min-width: 0;
   border: none;
-  padding: 14px 16px;
+  padding: 14px 4px 14px 12px;
   font-family: var(--font-family);
   font-size: 24px;
   font-weight: 600;
@@ -507,6 +517,79 @@ body {
 
 #amount-input::placeholder {
   color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.amount-calc-hint {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== QUICK TOOLBAR (Fee & Presets) ===== */
+.quick-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.quick-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.chip-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.m3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+
+.m3-chip:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.m3-chip.active {
+  background: var(--primary-light);
+  border-color: transparent;
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* ===== CONVERSION CARDS ===== */
@@ -537,7 +620,7 @@ body {
   padding: 14px 16px;
   background: var(--surface);
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-light);
   box-shadow: var(--shadow);
   transition: transform 220ms cubic-bezier(0.2, 0, 0, 1),
               box-shadow 220ms cubic-bezier(0.2, 0, 0, 1),
@@ -550,12 +633,12 @@ body {
 
 .conv-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: var(--border);
 }
 
 .conv-card:active:not(.is-dragging) {
-  transform: scale(0.99) translateY(0);
+  transform: scale(0.995) translateY(0);
 }
 
 .conv-card .conv-flag {
@@ -702,13 +785,52 @@ body {
   flex-shrink: 0;
 }
 
+.conv-card .conv-amount.is-copyable {
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background-color var(--transition);
+}
+
+.conv-card .conv-amount.is-copyable:hover {
+  background: var(--surface-hover);
+}
+
+.conv-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.conv-swap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition);
+}
+
+.conv-swap:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
 /* Delete button on hover */
 .conv-card .conv-delete {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border: none;
   border-radius: 50%;
   background: var(--border-light);

@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:pivotX="54"
+        android:pivotY="54">
+
+        <!-- Outer subtle glow circle -->
+        <path
+            android:fillColor="#3B82F6"
+            android:fillAlpha="0.3"
+            android:pathData="M54,54m-38,0a38,38 0 1,1 76,0a38,38 0 1,1 -76,0"/>
+
+        <!-- Main circular background for icon element -->
+        <path
+            android:fillColor="#2563EB"
+            android:pathData="M54,54m-30,0a30,30 0 1,1 60,0a30,30 0 1,1 -60,0"/>
+
+        <!-- Top Exchange Arrow (Curved Right) -->
+        <path
+            android:fillColor="#F8FAFC"
+            android:pathData="M40,43 C44,37 53,34 62,35 L62,31 L71,38 L62,45 L62,41 C55,40 48,42 44,46 L40,43 Z"/>
+
+        <!-- Bottom Exchange Arrow (Curved Left) -->
+        <path
+            android:fillColor="#F8FAFC"
+            android:pathData="M68,65 C64,71 55,74 46,73 L46,77 L37,70 L46,63 L46,67 C53,68 60,66 64,62 L68,65 Z"/>
+
+        <!-- Center Currency Symbols: Dollar & Euro/Bitcoin -->
+        <!-- Currency symbol left: $ -->
+        <path
+            android:fillColor="#FCD34D"
+            android:pathData="M48,51 C48,48 46,47 43,47 C40.5,47 39,48.5 39,50.5 C39,53.5 48,53.5 48,58.5 C48,61.5 45.5,63 43,63 C40,63 38,61.5 38,59 L41,59 C41,60.5 42,61.2 43,61.2 C44.5,61.2 45.5,60.2 45.5,58.5 C45.5,56 36.5,56 36.5,50.5 C36.5,47.5 39,45.2 42.5,45.2 L42.5,43 L44.5,43 L44.5,45.2 C46.5,45.4 48,46.8 48.5,48.5 L45.5,48.5 Z M42.5,63 L42.5,65 L44.5,65 L44.5,63 Z"/>
+
+        <!-- Currency symbol right: € -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M66,50 C64.5,48.2 62.2,47 59.5,47 C55.5,47 52.5,50.2 52.5,54 C52.5,57.8 55.5,61 59.5,61 C62.2,61 64.5,59.8 66,58 L68.5,60 C66.3,62.5 63.2,63.8 59.5,63.8 C53.8,63.8 49.5,59.5 49.5,54 C49.5,48.5 53.8,44.2 59.5,44.2 C63.2,44.2 66.3,45.5 68.5,48 L66,50 Z M51.5,52.5 L60,52.5 L60,54.5 L51.5,54.5 Z M51.5,55.5 L58,55.5 L58,57.5 L51.5,57.5 Z"/>
+
+    </group>
+</vector>
