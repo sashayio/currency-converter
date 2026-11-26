@@ -1158,7 +1158,9 @@ function applyLanguage(lang) {
     localStorage.setItem(LANG_STORAGE_KEY, currentLang);
   } catch (e) {}
   document.documentElement.setAttribute('lang', currentLang);
-  document.title = 'Currency converter';
+  document.title = currentLang === 'ru'
+    ? 'World Prices — Конвертер валют и криптовалют онлайн | Свой курс и PNG экспорт'
+    : 'World Prices — Currency & Crypto Converter Online';
 
   // Update header and setup titles
   const elAppName = $('#app-name');
