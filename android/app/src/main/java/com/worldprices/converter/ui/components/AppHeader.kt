@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -48,6 +49,7 @@ fun AppHeader(
     isRussian: Boolean,
     onRefresh: () -> Unit,
     onToggleTheme: () -> Unit,
+    onOpenScanner: () -> Unit,
     onShare: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -105,6 +107,14 @@ fun AppHeader(
                     imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
                     contentDescription = AppStrings.toggleTheme(isRussian),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(onClick = onOpenScanner, modifier = Modifier.size(38.dp)) {
+                Icon(
+                    imageVector = Icons.Default.DocumentScanner,
+                    contentDescription = AppStrings.scanCurrency(isRussian),
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
 

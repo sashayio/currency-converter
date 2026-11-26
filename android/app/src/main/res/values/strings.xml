@@ -42,4 +42,16 @@
     <string name="onboarding_desc_2">Set your own exchange rates for cash deals, reorder your favorite list, and calculate offline anywhere.</string>
     <string name="onboarding_title_3">Quick Setup</string>
     <string name="onboarding_desc_3">Select your base currency and choose your favorite targets to get started.</string>
+
+    <!-- Scanner Strings -->
+    <string name="scan_currency">Price Scanner</string>
+    <string name="scan_hint">Point camera at a price tag</string>
+    <string name="scan_detected">Detected</string>
+    <string name="scan_freeze">Freeze</string>
+    <string name="scan_resume">Resume</string>
+    <string name="scan_apply">To Converter</string>
+    <string name="scan_torch">Flashlight</string>
+    <string name="scan_camera_permission_title">Camera Permission</string>
+    <string name="scan_camera_permission_desc">Camera access is needed to scan prices and currencies in real time.</string>
+    <string name="scan_grant_permission">Grant Permission</string>
 </resources>

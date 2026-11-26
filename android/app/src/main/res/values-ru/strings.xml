@@ -42,4 +42,16 @@
     <string name="onboarding_desc_2">Задавайте свои курсы обмена, меняйте порядок карточек и считайте без интернета в поездках.</string>
     <string name="onboarding_title_3">Быстрый старт</string>
     <string name="onboarding_desc_3">Выберите основную валюту и добавьте несколько валют для быстрого доступа.</string>
+
+    <!-- Scanner Strings -->
+    <string name="scan_currency">Сканер ценников</string>
+    <string name="scan_hint">Наведите камеру на ценник или сумму</string>
+    <string name="scan_detected">Распознано</string>
+    <string name="scan_freeze">Зафиксировать</string>
+    <string name="scan_resume">Возобновить</string>
+    <string name="scan_apply">В конвертер</string>
+    <string name="scan_torch">Фонарик</string>
+    <string name="scan_camera_permission_title">Доступ к камере</string>
+    <string name="scan_camera_permission_desc">Для распознавания ценников и купюр в реальном времени необходим доступ к камере.</string>
+    <string name="scan_grant_permission">Разрешить камеру</string>
 </resources>

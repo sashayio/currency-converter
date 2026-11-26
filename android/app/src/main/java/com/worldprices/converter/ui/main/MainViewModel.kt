@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class MainUiState(
     val sourceCurrency: Currency = CurrencyRegistry.defaultSource,
@@ -33,6 +34,7 @@ data class MainUiState(
     val isPickingSource: Boolean = false,
     val isPickingTargets: Boolean = false,
     val isSettingsOpen: Boolean = false,
+    val isScannerOpen: Boolean = false,
     val errorMessage: String? = null
 ) {
     val isRussian: Boolean get() = language == "ru"
@@ -245,6 +247,26 @@ class MainViewModel(
 
     fun setSettingsOpen(open: Boolean) {
         _uiState.update { it.copy(isSettingsOpen = open) }
+    }
+
+    fun setScannerOpen(open: Boolean) {
+        _uiState.update { it.copy(isScannerOpen = open) }
+    }
+
+    fun applyScannedAmount(amount: Double, sourceCode: String? = null) {
+        val displayAmount = if (amount % 1.0 == 0.0) {
+            amount.toLong().toString()
+        } else {
+            "%.2f".format(Locale.US, amount).trimEnd('0').trimEnd('.')
+        }
+        setAmountText(displayAmount)
+        if (sourceCode != null && sourceCode.isNotBlank()) {
+            val found = CurrencyRegistry.getByCode(sourceCode)
+            if (found != null && found.code.lowercase() != _uiState.value.sourceCurrency.code.lowercase()) {
+                setSourceCurrency(found.code)
+            }
+        }
+        setScannerOpen(false)
     }
 
     class Factory(private val repository: CurrencyRepository) : ViewModelProvider.Factory {

@@ -48,8 +48,10 @@ import com.worldprices.converter.ui.components.CurrencyCard
 import com.worldprices.converter.ui.dialogs.CurrencyPickerSheet
 import com.worldprices.converter.ui.dialogs.CustomRateDialog
 import com.worldprices.converter.ui.dialogs.SettingsSheet
+import com.worldprices.converter.ui.scanner.CurrencyScannerScreen
 import com.worldprices.converter.ui.utils.AppStrings
 import com.worldprices.converter.ui.utils.ShareHelper
+import com.worldprices.converter.ui.utils.UrlHelper
 
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
@@ -71,6 +73,7 @@ fun MainScreen(viewModel: MainViewModel) {
             isRussian = isRussian,
             onRefresh = { viewModel.loadRates(forceRefresh = true) },
             onToggleTheme = { viewModel.toggleTheme() },
+            onOpenScanner = { viewModel.setScannerOpen(true) },
             onShare = {
                 ShareHelper.shareConversionSummary(
                     context = context,
@@ -152,7 +155,8 @@ fun MainScreen(viewModel: MainViewModel) {
                 sourceCurrency = uiState.sourceCurrency,
                 amountText = uiState.amountText,
                 onAmountChange = { viewModel.setAmountText(it) },
-                onSourceClick = { viewModel.setPickingSource(true) }
+                onSourceClick = { viewModel.setPickingSource(true) },
+                onScanClick = { viewModel.setScannerOpen(true) }
             )
         }
 
@@ -215,10 +219,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .clickable {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://dalink.to/sashenkatg"))
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {}
+                                UrlHelper.openUrl(context, "https://dalink.to/sashenkatg")
                             }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -298,6 +299,22 @@ fun MainScreen(viewModel: MainViewModel) {
             onThemeChange = { viewModel.setThemeMode(it) },
             onLanguageChange = { viewModel.setLanguage(it) },
             onDismiss = { viewModel.setSettingsOpen(false) }
+        )
+    }
+
+    // Modal: Currency Live Camera Scanner
+    if (uiState.isScannerOpen) {
+        CurrencyScannerScreen(
+            sourceCurrency = uiState.sourceCurrency,
+            targetCurrencies = uiState.targetCurrencies,
+            effectiveRates = uiState.effectiveRatesMap,
+            marketRates = uiState.marketRates,
+            customRates = uiState.customRates,
+            isRussian = isRussian,
+            onDismiss = { viewModel.setScannerOpen(false) },
+            onApply = { amount, detectedCurrency ->
+                viewModel.applyScannedAmount(amount, detectedCurrency)
+            }
         )
     }
 }

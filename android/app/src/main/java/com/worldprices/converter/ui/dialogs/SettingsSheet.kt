@@ -1,7 +1,6 @@
 package com.worldprices.converter.ui.dialogs
 
-import android.content.Intent
-import android.net.Uri
+import com.worldprices.converter.ui.utils.UrlHelper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -174,10 +173,7 @@ fun SettingsSheet(
                 // Buy Coffee Tip Button
                 Button(
                     onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://dalink.to/sashenkatg"))
-                            context.startActivity(intent)
-                        } catch (e: Exception) {}
+                        UrlHelper.openUrl(context, "https://dalink.to/sashenkatg")
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
